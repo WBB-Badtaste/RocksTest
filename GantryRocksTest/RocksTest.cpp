@@ -4,6 +4,7 @@
 
 #include "stdafx.h"
 #include <iostream>
+#include <iomanip>
 #include <Windows.h>
 #include <string>
 #include <process.h>
@@ -13,7 +14,7 @@
 
 #include <nyceapi.h>
 #include <sacapi.h>
-#include <nhiapi.h>
+#include <nhiapi.h> 
 #include <rocksapi.h>
 
 using namespace std;
@@ -21,7 +22,7 @@ using namespace std;
 //#define GET_MOTION_VAR
 //#define USE_NODE
 #define USE_AXIS
-#define SIM_METHOD
+//#define SIM_METHOD
 
 NYCE_STATUS nyceStatus;
 HANDLE hEvStop;
@@ -75,7 +76,15 @@ BOOL InitNode(void)
 
 #ifdef USE_AXIS
 #define NUM_AXES 4
+#if NUM_AXES == 2
+const char *axName[ NUM_AXES ] = { "DEF_AXIS_1", "DEF_AXIS_2"};
+#endif
+#if NUM_AXES == 3
+const char *axName[ NUM_AXES ] = { "DEF_AXIS_1", "DEF_AXIS_2", "DEF_AXIS_3"};
+#endif
+#if NUM_AXES == 4
 const char *axName[ NUM_AXES ] = { "DEF_AXIS_1", "DEF_AXIS_2", "DEF_AXIS_3", "DEF_AXIS_4"};
+#endif
 SAC_AXIS axId[ NUM_AXES ];
 BOOL axCon[ NUM_AXES ];
 void TermAxis(void)
@@ -127,8 +136,7 @@ BOOL InitAxis(void)
 		{
 			switch (sacState)
 			{
-			case SAC_ERROR:
-			case SAC_INACTIVE:
+			default:
 				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacShutdown( axId[ ax ]);
 				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacSynchronize( axId[ ax ], SAC_REQ_SHUTDOWN, 10 );
 			case SAC_IDLE:
@@ -149,7 +157,6 @@ BOOL InitAxis(void)
 			case SAC_MOVING:
 				printf("Waiting the motion stop...");
 				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacSynchronize( axId[ ax ], SAC_REQ_MOTION_STOPPED, 30 );
-			default:
 				break;
 			}
 		}
@@ -169,6 +176,7 @@ BOOL InitAxis(void)
 ROCKS_MECH  m_mech;
 ROCKS_KIN_INV_PARS kinPars;
 ROCKS_TRAJ_PATH rocksTrajPath;
+ROCKS_POSE rocksPose;
 BOOL bRocksTerm = FALSE;
 HANDLE hThreadRocks;
 
@@ -180,7 +188,10 @@ unsigned __stdcall ThreadRocksLoop(void* lpParam)
 	{
 		Status = NyceError( Status ) ? Status : RocksTrajLoadPath(&m_mech, &rocksTrajPath);
 
-		Status = NyceError( Status ) ? Status : RocksKinInverseCartesian( &m_mech, &kinPars );
+		//Status = NyceError( Status ) ? Status : RocksKinInverseCartesian( &m_mech, &kinPars );
+		Status = NyceError( Status ) ? Status : RocksKinInverseGantry( &m_mech, &kinPars );
+
+		//Status = NyceError( Status ) ? Status : RocksKinMoveOrigin(&m_mech, &rocksPose);
 
 		// Feed splines to the joints
 		// --------------------------
@@ -228,14 +239,15 @@ BOOL Rocks(void)
 		m_mech.jointAxisId[ ax ] = axId[ ax ];
 	}
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksMechCreate( &m_mech );
-	//	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinDefineGantry( &m_mech, ROCKS_GANTRY_X );
+
+	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinDefineGantry( &m_mech, ROCKS_GANTRY_Y );
 
 	// Define the circle
 	// -----------------
-	sineAccPars.maxVelocity = 300;//.03272
-	sineAccPars.maxAcceleration = 3000.0;
-	sineAccPars.splineTime = 0.001;
-	sineAccPars.center[ 0 ] = 300.0;
+	sineAccPars.maxVelocity = 20;
+	sineAccPars.maxAcceleration = 200;
+	sineAccPars.splineTime = 0.01;
+	sineAccPars.center[ 0 ] = 10.0;
 	sineAccPars.center[ 1 ] = 0.0;
 	sineAccPars.angle = M_PI * 2;
 	sineAccPars.plane = ROCKS_PLANE_XY;
@@ -243,10 +255,16 @@ BOOL Rocks(void)
 	sineAccPars.pPositionSplineBuffer = NULL;
 	sineAccPars.pVelocitySplineBuffer = NULL;
 
+	rocksPose.r.x = M_PI_4;
+	rocksPose.r.y = 0;
+	rocksPose.r.z = 0;
+	rocksPose.t.x = 0;
+	rocksPose.t.y = 0;
+	rocksPose.t.z = 0;
 	// Get current position
 	// --------------------
-	//	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinGantryPosition( &m_mech, sineAccPars.startPos );
-	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinCartesianPosition( &m_mech, sineAccPars.startPos );
+	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinGantryPosition( &m_mech, sineAccPars.startPos );
+	//  nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinCartesianPosition( &m_mech, sineAccPars.startPos );
 
 	// Get path splines
 	// ----------------
@@ -259,6 +277,8 @@ BOOL Rocks(void)
 		kinPars.pJointPositionBuffer[ ax ] = NULL;
 		kinPars.pJointVelocityBuffer[ ax ] = NULL;
 	}
+
+	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinMoveOrigin(&m_mech, &rocksPose);
 
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajGetPath( &m_mech, &rocksTrajPath);
 
@@ -305,25 +325,33 @@ void processConsoleCommand(HANDLE hConlseInput)
 }
 
 #ifdef GET_MOTION_VAR
-
-uint32_t varIndexs[NUM_AXES * 2];
-double vars[NUM_AXES * 2];
+#include <fstream>
+#define ADDR "..\\"
+uint32_t varIndexs[NUM_AXES];
+double vars[NUM_AXES];
 
 void OnInterpolantEvent( NYCE_ID nyceId, NYCE_EVENT eventId, NYCE_EVENT_DATA *pEventData, void *pUserData )
 {
+	ofstream *pFile = (ofstream *)pUserData;
 	NYCE_STATUS myStatus = NYCE_OK;
-	myStatus = NyceError(myStatus) ? myStatus : NyceReadVariableSet(varIndexs[0], varIndexs[NUM_AXES * 2 - 1], vars);
+	double cartesianPos[ROCKS_MECH_MAX_DOF];
+	myStatus = NyceError(myStatus) ? myStatus : NyceReadVariableSet(varIndexs[0], varIndexs[NUM_AXES - 1], vars);
+	myStatus = NyceError(myStatus) ? myStatus : RocksKinCartesianPosition(&m_mech, cartesianPos);
 	if (NyceError(myStatus))
 	{
 		HandleError(myStatus, "NyceReadVariableSet");
 		SetEvent(hEvStop);
 		return;
 	}
-	for (int i = 0; i <NUM_AXES * 2; ++i)
+ 	for (int i = 0; i <NUM_AXES; ++i)
+ 	{
+		*pFile<<vars[i]<<" ";
+ 	}
+	for (int i = 0; i <NUM_AXES; ++i)
 	{
-		cout<<vars[i]<<" ";
+		*pFile<<cartesianPos[i]<<" ";
 	}
-	cout<<endl;
+	*pFile<<endl;
 }
 
 #endif // GET_MOTION_VAR
@@ -333,6 +361,17 @@ int _tmain(int argc, _TCHAR* argv[])
 	nyceStatus = NYCE_OK;	
 	uint32_t varIndex = 0;
 	unsigned uThreadRocks = 0;
+
+#ifdef GET_MOTION_VAR
+	SYSTEMTIME time;
+	CHAR buffer[30];
+	string addrText(ADDR);
+	GetSystemTime(&time);
+	sprintf_s(buffer, "SampleVars%d-%d-%d.txt", time.wYear, time.wMonth, time.wDay);
+	addrText += buffer;
+	ofstream file(addrText);
+#endif // GET_MOTION_VAR
+	
 	printf("Begin...\n");
 #ifdef SIM_METHOD
 	nyceStatus = NyceInit(NYCE_SIM);
@@ -345,6 +384,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		HandleError("System");
 		goto end;
 	}
+
 #ifdef USE_NODE
 	if (!InitNode()) goto end;
 #endif // USE_NODE
@@ -360,26 +400,28 @@ int _tmain(int argc, _TCHAR* argv[])
 
 #ifdef GET_MOTION_VAR
 
-	nyceStatus = NyceError(nyceStatus) ? nyceStatus : SacDefineEventEnrolment(axId[0], SAC_EV_INTERPOLANT_STARTED, OnInterpolantEvent, NULL);
+	nyceStatus = NyceError(nyceStatus) ? nyceStatus : SacDefineEventEnrolment(axId[0], SAC_EV_INTERPOLANT_STARTED, OnInterpolantEvent, (void * )&file);
 	if (NyceError(nyceStatus)) goto end;
-
 	for (int ax = 0; ax <NUM_AXES; ++ax)
 	{
-		nyceStatus = SacAddVariableToSet(axId[ax], SAC_VAR_AXIS_VEL, &varIndex);
-		if (NyceError(nyceStatus))
-		{
-			HandleError(axName[ax]);
-			goto term;
-		}
-		varIndexs[ax *2] = varIndex;
 		nyceStatus = SacAddVariableToSet(axId[ax], SAC_VAR_AXIS_POS, &varIndex);
 		if (NyceError(nyceStatus))
 		{
 			HandleError(axName[ax]);
 			goto term;
 		}
-		varIndexs[ax *2 + 1] = varIndex;
+		varIndexs[ax] = varIndex;
 	}
+// 	for (int ax = 0; ax <NUM_AXES; ++ax)
+// 	{
+// 		nyceStatus = SacAddVariableToSet(axId[ax], SAC_VAR_AXIS_VEL, &varIndex);
+// 		if (NyceError(nyceStatus))
+// 		{
+// 			HandleError(axName[ax]);
+// 			goto term;
+// 		}
+// 		varIndexs[ax + 3] = varIndex;
+// 	}
 
 #endif 
 
@@ -420,6 +462,8 @@ term:
 	{
 		nyceStatus = NyceError(nyceStatus) ? nyceStatus : SacDeleteEventEnrolment(axId[ax], SAC_EV_INTERPOLANT_STARTED, OnInterpolantEvent, NULL);
 	}
+
+	file.close();
 #endif // GET_MOTION_VAR
 	
 end:
@@ -439,4 +483,4 @@ end:
 
 	system("pause");
 	return 0;
-}
+} 
