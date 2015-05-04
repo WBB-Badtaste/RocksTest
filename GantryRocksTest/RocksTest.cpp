@@ -180,16 +180,31 @@ ROCKS_POSE rocksPose;
 BOOL bRocksTerm = FALSE;
 HANDLE hThreadRocks;
 
+// NYCE_STATUS RocksKinInverseGantry(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pKin)
+// {
+// 	return NYCE_OK;
+// }
+
+#include <fstream>
+
 unsigned __stdcall ThreadRocksLoop(void* lpParam)
 {
 	NYCE_STATUS Status = NYCE_OK;
 
 	while(!bRocksTerm)
 	{
+		
 		Status = NyceError( Status ) ? Status : RocksTrajLoadPath(&m_mech, &rocksTrajPath);
 
 		//Status = NyceError( Status ) ? Status : RocksKinInverseCartesian( &m_mech, &kinPars );
 		Status = NyceError( Status ) ? Status : RocksKinInverseGantry( &m_mech, &kinPars );
+
+		ofstream file("..//data2.txt");		
+		for (int i = 0; i < m_mech.var.usedNrOfSplines; ++i)
+		{
+			file<<i<<" ";
+			file<<m_mech.var.pJointPositionBufferC[0][i]<<" "<<m_mech.var.pJointVelocityBufferC[0][i]<<" "<<m_mech.var.pJointPositionBufferC[1][i]<<" "<<m_mech.var.pJointVelocityBufferC[1][i]<<" "<<m_mech.var.pJointPositionBufferC[2][i]<<" "<<m_mech.var.pJointVelocityBufferC[2][i]<<" "<<m_mech.var.pJointPositionBufferC[3][i]<<" "<<m_mech.var.pJointVelocityBufferC[3][i]<<endl;
+		}
 
 		//Status = NyceError( Status ) ? Status : RocksKinMoveOrigin(&m_mech, &rocksPose);
 
@@ -209,7 +224,7 @@ unsigned __stdcall ThreadRocksLoop(void* lpParam)
 		}
 	}	
 
-	Status = NyceError( Status ) ? Status : RocksTrajDeletePath(&m_mech, &rocksTrajPath);
+	Status = NyceError( Status ) ? Status : RocksTrajDeletePath( &m_mech, &rocksTrajPath );
 
 	// Delete mechanism
 	// ----------------
@@ -221,6 +236,8 @@ unsigned __stdcall ThreadRocksLoop(void* lpParam)
 	}
 	return 0;
 }
+
+
 
 BOOL Rocks(void)
 {
@@ -255,7 +272,7 @@ BOOL Rocks(void)
 	sineAccPars.pPositionSplineBuffer = NULL;
 	sineAccPars.pVelocitySplineBuffer = NULL;
 
-	rocksPose.r.x = M_PI_4;
+	rocksPose.r.x = M_PI_4 / 2;
 	rocksPose.r.y = 0;
 	rocksPose.r.z = 0;
 	rocksPose.t.x = 0;
@@ -279,6 +296,12 @@ BOOL Rocks(void)
 	}
 
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinMoveOrigin(&m_mech, &rocksPose);
+
+	ofstream file("..//data.txt");
+	for (int i = 0; i < m_mech.var.usedNrOfSplines; ++i)
+	{
+		file<<i<<" "<<m_mech.var.pPositionSplineBuffer[i]<<" "<<m_mech.var.pVelocitySplineBuffer[i]<<endl;
+	}
 
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajGetPath( &m_mech, &rocksTrajPath);
 
