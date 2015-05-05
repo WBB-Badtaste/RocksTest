@@ -77,7 +77,7 @@ BOOL InitNode(void)
 #endif // USE_NODE
 
 #ifdef USE_AXIS
-#define NUM_AXES 4
+#define NUM_AXES 3
 #if NUM_AXES == 2
 const char *axName[ NUM_AXES ] = { "DEF_AXIS_1", "DEF_AXIS_2"};
 #endif
@@ -190,11 +190,11 @@ NYCE_STATUS RocksKinForwardDelta(struct rocks_mech* pMech, const double pJointPo
 		rate_angle2pu[ax] = 0.5 / M_PI;
 	}
 	delta_calcForward(pJointPos[0] / rate_angle2pu[0], pJointPos[1] / rate_angle2pu[1], pJointPos[2] / rate_angle2pu[2], pMechPos[0], pMechPos[1], pMechPos[2]);
-	double x,y,z;
-	delta_calcForward(0, 0, 0, x,y,z);
-	double a1,a2,a3;
-	delta_calcInverse(x,y,z,a1,a2,a3);
-	return NYCE_OK;
+// 	double x,y,z;
+// 	delta_calcForward(0, 0, 0, x,y,z);
+// 	double a1,a2,a3;
+// 	delta_calcInverse(x,y,z,a1,a2,a3);
+	return NYCE_OK; 
 }
 
 NYCE_STATUS RocksKinDeltaPosition(struct rocks_mech* pMech, double pPos[])
@@ -225,6 +225,11 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 		rate_angle2pu[ax] = 0.5 / M_PI;
 	}
 
+	for (int ax = 0; ax < pMech->nrOfJoints; ax++)
+	{
+		nyceStatus = NyceError(nyceStatus) ? nyceStatus : SacReadVariable(axId[ax], SAC_VAR_AXIS_POS, &pMech->var.pJointPositionBufferC[ax][0]);
+	}
+
 	int index = 0;
 	for (index = 0; index < pMech->var.usedNrOfSplines; ++index)
 	{
@@ -232,22 +237,36 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 		{
 			double s = 2 * M_PI * pMech->var.radius;
 			double angle = pMech->var.pPositionSplineBuffer[index] / pMech->var.radius;
-			double pos_x = pMech->var.startPos[0] + pMech->var.radius - pMech->var.radius * cos(angle);
-			double pos_y = pMech->var.startPos[1] + pMech->var.radius * sin(angle) * cos(pMech->var.refFramePose2.r.x);
-			double pos_z = pMech->var.startPos[2] - pMech->var.radius * sin(angle) * sin(pMech->var.refFramePose2.r.x);
-			double pos_joint_x, pos_joint_y, pos_joint_z;
-			delta_calcInverse(pos_x, pos_y, pos_z, pos_joint_x, pos_joint_y, pos_joint_z);
-			pMech->var.pJointPositionBufferC[0][index] = pos_joint_x * rate_angle2pu[0];
-			pMech->var.pJointPositionBufferC[1][index] = pos_joint_y * rate_angle2pu[1];
-			pMech->var.pJointPositionBufferC[2][index] = pos_joint_z * rate_angle2pu[2];
-			double vel_x = pMech->var.pVelocitySplineBuffer[index] * cos(angle);
-			double vel_y = pMech->var.pVelocitySplineBuffer[index] * sin(angle) * cos(pMech->var.refFramePose2.r.x);
-			double vel_z = - pMech->var.pVelocitySplineBuffer[index] * sin(angle) * cos(pMech->var.refFramePose2.r.x);
-			double vel_joint_x, vel_joint_y, vel_joint_z;
-			delta_calcInverse(vel_x, vel_y, vel_z, vel_joint_x, vel_joint_y, vel_joint_z);
-			pMech->var.pJointVelocityBufferC[0][index] = vel_joint_x * rate_angle2pu[0];
-			pMech->var.pJointVelocityBufferC[1][index] = vel_joint_y * rate_angle2pu[1];
-			pMech->var.pJointVelocityBufferC[2][index] = vel_joint_z * rate_angle2pu[2];
+			if (index == 0)
+			{
+// 				pMech->var.pJointPositionBufferC[0][index] = 0;
+// 				pMech->var.pJointPositionBufferC[1][index] = 0;
+// 				pMech->var.pJointPositionBufferC[2][index] = 0;
+
+				pMech->var.pJointVelocityBufferC[0][index] = 0;
+				pMech->var.pJointVelocityBufferC[1][index] = 0;
+				pMech->var.pJointVelocityBufferC[2][index] = 0;
+			}
+			else
+			{
+				double pos_x = pMech->var.startPos[0] + pMech->var.radius - pMech->var.radius * cos(angle);
+				double pos_y = pMech->var.startPos[1] + pMech->var.radius * sin(angle) * cos(pMech->var.refFramePose2.r.x);
+				double pos_z = pMech->var.startPos[2] - pMech->var.radius * sin(angle) * sin(pMech->var.refFramePose2.r.x);
+				double pos_joint_x, pos_joint_y, pos_joint_z;
+				delta_calcInverse(pos_x, pos_y, pos_z, pos_joint_x, pos_joint_y, pos_joint_z);
+				pMech->var.pJointPositionBufferC[0][index] = pos_joint_x * rate_angle2pu[0];
+				pMech->var.pJointPositionBufferC[1][index] = pos_joint_y * rate_angle2pu[1];
+				pMech->var.pJointPositionBufferC[2][index] = pos_joint_z * rate_angle2pu[2];
+
+				double vel_x = pMech->var.pVelocitySplineBuffer[index] * cos(angle);
+				double vel_y = pMech->var.pVelocitySplineBuffer[index] * sin(angle) * cos(pMech->var.refFramePose2.r.x);
+				double vel_z = - pMech->var.pVelocitySplineBuffer[index] * sin(angle) * cos(pMech->var.refFramePose2.r.x);
+				double vel_joint_x, vel_joint_y, vel_joint_z;
+				delta_calcInverse(vel_x, vel_y, vel_z, vel_joint_x, vel_joint_y, vel_joint_z);
+				pMech->var.pJointVelocityBufferC[0][index] = vel_joint_x * rate_angle2pu[0];
+				pMech->var.pJointVelocityBufferC[1][index] = vel_joint_y * rate_angle2pu[1];
+				pMech->var.pJointVelocityBufferC[2][index] = vel_joint_z * rate_angle2pu[2];
+			}
 		} 
 	}
 	pMech->var.mechStep = ROCKS_MECH_STEP_VALID_INV_KINEMATICS;
@@ -283,6 +302,13 @@ unsigned __stdcall ThreadRocksLoop(void* lpParam)
 // 			file<<m_mech.var.pJointPositionBufferC[0][i]<<" "<<m_mech.var.pJointVelocityBufferC[0][i]<<" "<<m_mech.var.pJointPositionBufferC[1][i]<<" "<<m_mech.var.pJointVelocityBufferC[1][i]<<" "<<m_mech.var.pJointPositionBufferC[2][i]<<" "<<m_mech.var.pJointVelocityBufferC[2][i]<<" "<<m_mech.var.pJointPositionBufferC[3][i]<<" "<<m_mech.var.pJointVelocityBufferC[3][i]<<endl;
 // 		//	m_mech.var.pJointPositionBufferC[3][i] = m_mech.var.pJointVelocityBufferC[3][i] = 0;
 // 		}
+
+		ofstream file("..//data3.txt");		
+		for (int i = 0; i < m_mech.var.usedNrOfSplines; ++i)
+		{
+			file<<i<<" "<<m_mech.var.pPositionSplineBuffer[i]<<" "<<m_mech.var.pJointPositionBufferC[0][i]<<" "<<m_mech.var.pJointVelocityBufferC[0][i]<<" "<<m_mech.var.pJointPositionBufferC[1][i]<<" "<<m_mech.var.pJointVelocityBufferC[1][i]<<" "<<m_mech.var.pJointPositionBufferC[2][i]<<" "<<m_mech.var.pJointVelocityBufferC[2][i]<<endl;
+			//	m_mech.var.pJointPositionBufferC[3][i] = m_mech.var.pJointVelocityBufferC[3][i] = 0;
+		}
 
 		//Status = NyceError( Status ) ? Status : RocksKinMoveOrigin(&m_mech, &rocksPose);
 
@@ -340,7 +366,7 @@ BOOL Rocks(void)
 	// -----------------
 	sineAccPars.maxVelocity = 20;
 	sineAccPars.maxAcceleration = 200;
-	sineAccPars.splineTime = 0.00006;
+	sineAccPars.splineTime = 0.01;
 	sineAccPars.center[ 0 ] = 10.0;
 	sineAccPars.center[ 1 ] = 0.0;
 	sineAccPars.angle = M_PI * 2;

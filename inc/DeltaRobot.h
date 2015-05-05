@@ -1,8 +1,8 @@
-extern "C"
-{
+
+	#define _USE_MATH_DEFINES
 	#include <math.h>
 	 // robot geometry
-	 // (look at pics above for explanation)
+	 // (look at M_PIcs above for explanation)
 	  double e = 65.0;     // end effector
 	  double f = 150.0;     // base
 	  double re = 550.0;
@@ -10,7 +10,6 @@ extern "C"
 	 
 	 // trigonometric constants
 	 const double sqrt3 = sqrt(3.0);
-	 const double pi = 3.141592653;    // PI
 	 const double sin120 = sqrt3/2.0;   
 	 const double cos120 = -0.5;        
 	 const double tan60 = sqrt3;
@@ -29,12 +28,7 @@ extern "C"
 	 // returned status: 0=OK, -1=non-existing position
 	int delta_calcForward(double theta1, double theta2, double theta3, double &x0, double &y0, double &z0) {
      double t = (f-e)*tan30/2;
-     double dtr = pi/(double)180.0;
- 
-     theta1 *= dtr;
-     theta2 *= dtr;
-     theta3 *= dtr;
- 
+
      double y1 = -(t + rf*cos(theta1));
      double z1 = -rf*sin(theta1);
  
@@ -80,8 +74,8 @@ extern "C"
 	 // inverse kinematics
 	 // helper functions, calculates angle theta1 (for YZ-pane)
 	 int delta_calcAngleYZ(double x0, double y0, double z0, double &theta) {
-		 double y1 = -0.5 * 0.57735 * f; // f/2 * tg 30
-		 y0 -= 0.5 * 0.57735    * e;    // shift center to edge
+		 double y1 = -0.5 * tan(M_PI / 6.0) * f; // f/2 * tg 30
+		 y0 -= 0.5 * tan(M_PI / 6.0) * e;    // shift center to edge
 		 // z = a + b*y
 		 double a = (x0 * x0 + y0 * y0 + z0 * z0 + rf * rf - re * re - y1 * y1) / (2 * z0);
 		 double b = (y1 - y0) / z0;
@@ -90,7 +84,7 @@ extern "C"
 		 if (d < 0) return -1; // non-existing point
 		 double yj = (y1 - a * b - sqrt(d)) / (b * b + 1); // choosing outer point
 		 double zj = a + b * yj;
-		 theta = 180.0 * atan(-zj / (y1 - yj)) / pi + ((yj > y1) ? 180.0 : 0.0);
+		 theta = atan(-zj / (y1 - yj)) + ((yj > y1) ? M_PI : 0.0);
 		 return 0;
 	 }
  
@@ -103,4 +97,3 @@ extern "C"
 		 if (status == 0) status = delta_calcAngleYZ(x0 * cos120 - y0 * sin120, y0 * cos120 + x0 * sin120, z0, theta3);  // rotate coords to -120 deg
 		 return status;
 	 }
-}
