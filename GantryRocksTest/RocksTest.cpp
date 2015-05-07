@@ -184,6 +184,7 @@ HANDLE hThreadRocks;
 
 NYCE_STATUS RocksKinForwardDelta(struct rocks_mech* pMech, const double pJointPos[], double pMechPos[])
 {
+	ZeroMemory(pMechPos, sizeof(double) * ROCKS_MECH_MAX_DOF);
 	double rate_angle2pu[ROCKS_MECH_MAX_NR_OF_JOINTS];
 	for (int ax = 0; ax < pMech->nrOfJoints; ++ax)//只在当前情况下有效
 	{
@@ -267,7 +268,6 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 				pMech->var.pJointVelocityBufferC[0][index] = (pMech->var.pJointPositionBufferC[0][index] - pMech->var.pJointPositionBufferC[0][index - 1]) / (pMech->var.splineTime);
 				pMech->var.pJointVelocityBufferC[1][index] = (pMech->var.pJointPositionBufferC[1][index] - pMech->var.pJointPositionBufferC[1][index - 1]) / (pMech->var.splineTime);																																																																																																				
 				pMech->var.pJointVelocityBufferC[2][index] = (pMech->var.pJointPositionBufferC[2][index] - pMech->var.pJointPositionBufferC[2][index - 1]) / (pMech->var.splineTime);																																																																																																				
-																																																																																																																									pMech->var.pJointVelocityBufferC[2][index] = (pMech->var.pJointPositionBufferC[0][index] - pMech->var.pJointPositionBufferC[0][index - 1]) / (pMech->var.splineTime);
 			}
 		} 
 	}
@@ -289,26 +289,17 @@ unsigned __stdcall ThreadRocksLoop(void* lpParam)
 		
 		Status = NyceError( Status ) ? Status : RocksTrajLoadPath(&m_mech, &rocksTrajPath);
 
-		//Status = NyceError( Status ) ? Status : RocksKinInverseCartesian( &m_mech, &kinPars );
+		Status = NyceError( Status ) ? Status : RocksKinInverseCartesian( &m_mech, &kinPars );
 		Status = NyceError( Status ) ? Status : RocksKinInverseDelta( &m_mech, &kinPars );
 		//Status = NyceError( Status ) ? Status : RocksKinInverseGantry( &m_mech, &kinPars );
 
-// 		ofstream file("..//data2.txt");		
-// 		for (int i = 0; i < m_mech.var.usedNrOfSplines; ++i)
-// 		{
-// 			file<<i<<" ";
-// 			file<<m_mech.var.pJointPositionBufferC[0][i]<<" "<<m_mech.var.pJointVelocityBufferC[0][i]<<" "<<m_mech.var.pJointPositionBufferC[1][i]<<" "<<m_mech.var.pJointVelocityBufferC[1][i]<<" "<<m_mech.var.pJointPositionBufferC[2][i]<<" "<<m_mech.var.pJointVelocityBufferC[2][i]<<" "<<m_mech.var.pJointPositionBufferC[3][i]<<" "<<m_mech.var.pJointVelocityBufferC[3][i]<<endl;
-// 		//	m_mech.var.pJointPositionBufferC[3][i] = m_mech.var.pJointVelocityBufferC[3][i] = 0;
-// 		}
-
-		ofstream file("..//data3.txt");		
+		ofstream file("..//data3.txt");	
+		file<<m_mech.var.startPos[0]<< " "<<m_mech.var.startPos[1]<<" "<<m_mech.var.startPos[2]<<endl;
 		for (int i = 0; i < m_mech.var.usedNrOfSplines; ++i)
 		{
 			file<<i<<" "<<m_mech.var.pPositionSplineBuffer[i]<<" "<<m_mech.var.pJointPositionBufferC[0][i]<<" "<<m_mech.var.pJointVelocityBufferC[0][i]<<" "<<m_mech.var.pJointPositionBufferC[1][i]<<" "<<m_mech.var.pJointVelocityBufferC[1][i]<<" "<<m_mech.var.pJointPositionBufferC[2][i]<<" "<<m_mech.var.pJointVelocityBufferC[2][i]<<endl;
-			//	m_mech.var.pJointPositionBufferC[3][i] = m_mech.var.pJointVelocityBufferC[3][i] = 0;
 		}
 
-		//Status = NyceError( Status ) ? Status : RocksKinMoveOrigin(&m_mech, &rocksPose);
 
 		// Feed splines to the joints
 		// --------------------------
@@ -381,8 +372,8 @@ BOOL Rocks(void)
 	rocksPose.t.z = 0;
 	// Get current position
 	// --------------------
-	// nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinGantryPosition( &m_mech, sineAccPars.startPos );
-	//  nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinCartesianPosition( &m_mech, sineAccPars.startPos );
+	//nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinGantryPosition( &m_mech, sineAccPars.startPos );
+	//nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinCartesianPosition( &m_mech, sineAccPars.startPos );
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinDeltaPosition(&m_mech, sineAccPars.startPos);
 
 	// Get path splines
