@@ -3,11 +3,17 @@
 	#include <math.h>
 	 // robot geometry
 	 // (look at M_PIcs above for explanation)
-	  double e = 65.0;     // end effector
-	  double f = 150.0;     // base
-	  double re = 550.0;
-	  double rf = 200.0;
+
+// 	  double e = 65.0;     // end effector
+// 	  double f = 150.0;     // base
+// 	  double re = 550.0;
+// 	  double rf = 200.0;
 	 
+	  double e = 65.46;     // end effector
+	  double f = 215.0;     // base
+	  double re = 770.0;
+	  double rf = 320.0;
+
 	 // trigonometric constants
 	 const double sqrt3 = sqrt(3.0);
 	 const double sin120 = sqrt3/2.0;   
