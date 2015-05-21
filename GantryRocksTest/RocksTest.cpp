@@ -226,80 +226,48 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 	int index = 0;
 	for (index = 0; index < pMech->var.usedNrOfSplines; ++index)
 	{
+		double pos_x,pos_y,pos_z,vel_x,vel_y,vel_z;
+		double pos_joint_x, pos_joint_y, pos_joint_z;//joint angle(JA)
+		double vel_joint_x, vel_joint_y, vel_joint_z;//joint angular velocity(JAV)
+
 		if (pMech->var.moveType == ROCKS_MOVE_TYPE_CIRCULAR)//check the path type
 		{
 			double s = 2 * M_PI * pMech->var.radius; //circumference
 			double angle = pMech->var.pPositionSplineBuffer[index] / pMech->var.radius;
 
 			//convert PTCP to WTCP
-// 			double pos_x = pMech->var.startPos[0] + pMech->var.radius - pMech->var.radius * cos(angle);
-// 			double pos_y = pMech->var.startPos[1] + pMech->var.radius * sin(angle) * cos(pMech->var.refFramePose2.r.x);
-// 			double pos_z = pMech->var.startPos[2] - pMech->var.radius * sin(angle) * sin(pMech->var.refFramePose2.r.x);
-			double pos_x = pMech->var.startPos[0] + pMech->var.radius - pMech->var.radius * cos(angle);
-			double pos_y = pMech->var.startPos[1] + pMech->var.radius * sin(angle);
-			double pos_z = pMech->var.startPos[2];
+			pos_x = pMech->var.startPos[0] + pMech->var.radius - pMech->var.radius * cos(angle);
+			pos_y = pMech->var.startPos[1] + pMech->var.radius * sin(angle) * cos(pMech->var.refFramePose2.r.x);
+			pos_z = pMech->var.startPos[2] - pMech->var.radius * sin(angle) * sin(pMech->var.refFramePose2.r.x);
 
-			double pos_joint_x, pos_joint_y, pos_joint_z;//joint angle(JA)
-			delta_calcInverse(pos_x, pos_y, pos_z, pos_joint_x, pos_joint_y, pos_joint_z);
-
-			//convert the JA to joint position(JP)
-			pMech->var.pJointPositionBufferC[0][index] = pos_joint_x * rate_angle2pu[0];
-			pMech->var.pJointPositionBufferC[1][index] = pos_joint_y * rate_angle2pu[1];
-			pMech->var.pJointPositionBufferC[2][index] = pos_joint_z * rate_angle2pu[2];
-
-			//set precision -> 0.00001 
-			pMech->var.pJointPositionBufferC[0][index] = (double)(int)(pMech->var.pJointPositionBufferC[0][index] * 10000000) / 10000000;
-			pMech->var.pJointPositionBufferC[1][index] = (double)(int)(pMech->var.pJointPositionBufferC[1][index] * 10000000) / 10000000;
-			pMech->var.pJointPositionBufferC[2][index] = (double)(int)(pMech->var.pJointPositionBufferC[2][index] * 10000000) / 10000000;
-			
 			//convert PTCV to WTCV
-// 			double vel_x =	pMech->var.pVelocitySplineBuffer[index] * sin(angle);
-// 			double vel_y =	pMech->var.pVelocitySplineBuffer[index] * cos(angle) * cos(pMech->var.refFramePose2.r.x);
-// 			double vel_z = -pMech->var.pVelocitySplineBuffer[index] * cos(angle) * sin(pMech->var.refFramePose2.r.x);
-			double vel_x =	pMech->var.pVelocitySplineBuffer[index] * sin(angle);
-			double vel_y =	pMech->var.pVelocitySplineBuffer[index] * cos(angle);
-			double vel_z = 0;
-
-			double vel_joint_x, vel_joint_y, vel_joint_z;//joint angular velocity(JAV)
-			delta_velInverse(pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, pos_joint_x, pos_joint_y, pos_joint_z, vel_joint_x, vel_joint_y, vel_joint_z);
-			
-			//convert the JAV to joint velocity(JV)
-			pMech->var.pJointVelocityBufferC[0][index] = vel_joint_x * rate_angle2pu[0];
-			pMech->var.pJointVelocityBufferC[1][index] = vel_joint_y * rate_angle2pu[1];
-			pMech->var.pJointVelocityBufferC[2][index] = vel_joint_z * rate_angle2pu[2];
-
-			//set precision -> 0.00001 
-			pMech->var.pJointVelocityBufferC[0][index] = (double)(int)(pMech->var.pJointVelocityBufferC[0][index] * 10000000) / 10000000;
-			pMech->var.pJointVelocityBufferC[1][index] = (double)(int)(pMech->var.pJointVelocityBufferC[1][index] * 10000000) / 10000000;
-			pMech->var.pJointVelocityBufferC[2][index] = (double)(int)(pMech->var.pJointVelocityBufferC[2][index] * 10000000) / 10000000;
+			vel_x =	pMech->var.pVelocitySplineBuffer[index] * sin(angle);
+			vel_y =	pMech->var.pVelocitySplineBuffer[index] * cos(angle) * cos(pMech->var.refFramePose2.r.x);
+			vel_z = -pMech->var.pVelocitySplineBuffer[index] * cos(angle) * sin(pMech->var.refFramePose2.r.x);
 		} 
-// 		if (pMech->var.moveType == ROCKS_MOVE_TYPE_LINEAR)
-// 		{
-// 			if (index == 0)
-// 			{
-// 				nyceStatus = NyceError(nyceStatus) ? nyceStatus : SacReadVariable(axId[0], SAC_VAR_AXIS_POS, &pMech->var.pJointPositionBufferC[0][index]);
-// 				nyceStatus = NyceError(nyceStatus) ? nyceStatus : SacReadVariable(axId[1], SAC_VAR_AXIS_POS, &pMech->var.pJointPositionBufferC[1][index]);
-// 				nyceStatus = NyceError(nyceStatus) ? nyceStatus : SacReadVariable(axId[2], SAC_VAR_AXIS_POS, &pMech->var.pJointPositionBufferC[2][index]);
-// 
-// 				pMech->var.pJointVelocityBufferC[0][index] = 0;
-// 				pMech->var.pJointVelocityBufferC[1][index] = 0;
-// 				pMech->var.pJointVelocityBufferC[2][index] = 0;
-// 			}
-// 			else
-// 			{
-// 				double pos_x = pMech->var.startPos[0];
-// 				double pos_y = pMech->var.startPos[1] + pMech->var.pPositionSplineBuffer[index];
-// 				double pos_z = pMech->var.startPos[2];
-// 				double pos_joint_x, pos_joint_y, pos_joint_z;
-// 				delta_calcInverse(pos_x, pos_y, pos_z, pos_joint_x, pos_joint_y, pos_joint_z);
-// 				pMech->var.pJointPositionBufferC[0][index] = pos_joint_x * rate_angle2pu[0];
-// 				pMech->var.pJointPositionBufferC[1][index] = pos_joint_y * rate_angle2pu[1];
-// 				pMech->var.pJointPositionBufferC[2][index] = pos_joint_z * rate_angle2pu[2];
-// 				pMech->var.pJointVelocityBufferC[0][index] = (pMech->var.pJointPositionBufferC[0][index] - pMech->var.pJointPositionBufferC[0][index - 1]) / (pMech->var.splineTime);
-// 				pMech->var.pJointVelocityBufferC[1][index] = (pMech->var.pJointPositionBufferC[1][index] - pMech->var.pJointPositionBufferC[1][index - 1]) / (pMech->var.splineTime);																																																																																																				
-// 				pMech->var.pJointVelocityBufferC[2][index] = (pMech->var.pJointPositionBufferC[2][index] - pMech->var.pJointPositionBufferC[2][index - 1]) / (pMech->var.splineTime);																																																																																																				
-// 			}
-// 		}
+		delta_calcInverse(pos_x, pos_y, pos_z, pos_joint_x, pos_joint_y, pos_joint_z);
+
+		//convert the JA to joint position(JP)
+		pMech->var.pJointPositionBufferC[0][index] = pos_joint_x * rate_angle2pu[0];
+		pMech->var.pJointPositionBufferC[1][index] = pos_joint_y * rate_angle2pu[1];
+		pMech->var.pJointPositionBufferC[2][index] = pos_joint_z * rate_angle2pu[2];
+
+		//set precision -> 0.00001 
+		pMech->var.pJointPositionBufferC[0][index] = (double)(int)(pMech->var.pJointPositionBufferC[0][index] * 10000000) / 10000000;
+		pMech->var.pJointPositionBufferC[1][index] = (double)(int)(pMech->var.pJointPositionBufferC[1][index] * 10000000) / 10000000;
+		pMech->var.pJointPositionBufferC[2][index] = (double)(int)(pMech->var.pJointPositionBufferC[2][index] * 10000000) / 10000000;
+
+		delta_velInverse(pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, pos_joint_x, pos_joint_y, pos_joint_z, vel_joint_x, vel_joint_y, vel_joint_z);
+
+		//convert the JAV to joint velocity(JV)
+		pMech->var.pJointVelocityBufferC[0][index] = vel_joint_x * rate_angle2pu[0];
+		pMech->var.pJointVelocityBufferC[1][index] = vel_joint_y * rate_angle2pu[1];
+		pMech->var.pJointVelocityBufferC[2][index] = vel_joint_z * rate_angle2pu[2];
+
+		//set precision -> 0.00001 
+		pMech->var.pJointVelocityBufferC[0][index] = (double)(int)(pMech->var.pJointVelocityBufferC[0][index] * 10000000) / 10000000;
+		pMech->var.pJointVelocityBufferC[1][index] = (double)(int)(pMech->var.pJointVelocityBufferC[1][index] * 10000000) / 10000000;
+		pMech->var.pJointVelocityBufferC[2][index] = (double)(int)(pMech->var.pJointVelocityBufferC[2][index] * 10000000) / 10000000;
 	}
 	pMech->var.mechStep = ROCKS_MECH_STEP_VALID_INV_KINEMATICS;
 	pMech->var.pApplyForwardKinFunc = RocksKinForwardDelta;
