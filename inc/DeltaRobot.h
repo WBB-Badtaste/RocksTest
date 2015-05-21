@@ -20,13 +20,7 @@ double f = 220.0 * sqrt3;     // base
 double re = 650.0;
 double rf = 330.0;
 
-int set(double a, double b, double c, double d){
-    e = a;
-    f = b;
-    re = c;
-    rf = d;
-    return 0;
-}
+double mm2pu = 1;//convert mm unit to pu
     
 // forward kinematics: (theta1, theta2, theta3) -> (x0, y0, z0)
 // returned status: 0=OK, -1=non-existing position
