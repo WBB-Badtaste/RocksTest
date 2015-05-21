@@ -82,7 +82,7 @@ BOOL InitNode(void)
 const char *axName[ NUM_AXES ] = { "DEF_AXIS_1", "DEF_AXIS_2"};
 #endif
 #if NUM_AXES == 3
-const char *axName[ NUM_AXES ] = { "DEF_AXIS_1", "DEF_AXIS_2", "DEF_AXIS_3"};
+const char *axName[ NUM_AXES ] = { "DEF_AXIS_2", "DEF_AXIS_1", "DEF_AXIS_3"};
 #endif
 #if NUM_AXES == 4
 const char *axName[ NUM_AXES ] = { "DEF_AXIS_1", "DEF_AXIS_2", "DEF_AXIS_3", "DEF_AXIS_4"};
@@ -232,9 +232,12 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 			double angle = pMech->var.pPositionSplineBuffer[index] / pMech->var.radius;
 
 			//convert PTCP to WTCP
+// 			double pos_x = pMech->var.startPos[0] + pMech->var.radius - pMech->var.radius * cos(angle);
+// 			double pos_y = pMech->var.startPos[1] + pMech->var.radius * sin(angle) * cos(pMech->var.refFramePose2.r.x);
+// 			double pos_z = pMech->var.startPos[2] - pMech->var.radius * sin(angle) * sin(pMech->var.refFramePose2.r.x);
 			double pos_x = pMech->var.startPos[0] + pMech->var.radius - pMech->var.radius * cos(angle);
-			double pos_y = pMech->var.startPos[1] + pMech->var.radius * sin(angle) * cos(pMech->var.refFramePose2.r.x);
-			double pos_z = pMech->var.startPos[2] - pMech->var.radius * sin(angle) * sin(pMech->var.refFramePose2.r.x);
+			double pos_y = pMech->var.startPos[1] + pMech->var.radius * sin(angle);
+			double pos_z = pMech->var.startPos[2];
 
 			double pos_joint_x, pos_joint_y, pos_joint_z;//joint angle(JA)
 			delta_calcInverse(pos_x, pos_y, pos_z, pos_joint_x, pos_joint_y, pos_joint_z);
@@ -245,14 +248,17 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 			pMech->var.pJointPositionBufferC[2][index] = pos_joint_z * rate_angle2pu[2];
 
 			//set precision -> 0.00001 
-			pMech->var.pJointPositionBufferC[0][index] = (double)(int)(pMech->var.pJointPositionBufferC[0][index] * 100000) / 100000;
-			pMech->var.pJointPositionBufferC[1][index] = (double)(int)(pMech->var.pJointPositionBufferC[1][index] * 100000) / 100000;
-			pMech->var.pJointPositionBufferC[2][index] = (double)(int)(pMech->var.pJointPositionBufferC[2][index] * 100000) / 100000;
+			pMech->var.pJointPositionBufferC[0][index] = (double)(int)(pMech->var.pJointPositionBufferC[0][index] * 10000000) / 10000000;
+			pMech->var.pJointPositionBufferC[1][index] = (double)(int)(pMech->var.pJointPositionBufferC[1][index] * 10000000) / 10000000;
+			pMech->var.pJointPositionBufferC[2][index] = (double)(int)(pMech->var.pJointPositionBufferC[2][index] * 10000000) / 10000000;
 			
 			//convert PTCV to WTCV
-			double vel_x = pMech->var.pVelocitySplineBuffer[index] * sin(angle);
-			double vel_y = pMech->var.pVelocitySplineBuffer[index] * cos(angle) * cos(pMech->var.refFramePose2.r.x);
-			double vel_z = -pMech->var.pVelocitySplineBuffer[index] * cos(angle) * sin(pMech->var.refFramePose2.r.x);
+// 			double vel_x =	pMech->var.pVelocitySplineBuffer[index] * sin(angle);
+// 			double vel_y =	pMech->var.pVelocitySplineBuffer[index] * cos(angle) * cos(pMech->var.refFramePose2.r.x);
+// 			double vel_z = -pMech->var.pVelocitySplineBuffer[index] * cos(angle) * sin(pMech->var.refFramePose2.r.x);
+			double vel_x =	pMech->var.pVelocitySplineBuffer[index] * sin(angle);
+			double vel_y =	pMech->var.pVelocitySplineBuffer[index] * cos(angle);
+			double vel_z = 0;
 
 			double vel_joint_x, vel_joint_y, vel_joint_z;//joint angular velocity(JAV)
 			delta_velInverse(pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, pos_joint_x, pos_joint_y, pos_joint_z, vel_joint_x, vel_joint_y, vel_joint_z);
@@ -263,9 +269,9 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 			pMech->var.pJointVelocityBufferC[2][index] = vel_joint_z * rate_angle2pu[2];
 
 			//set precision -> 0.00001 
-			pMech->var.pJointVelocityBufferC[0][index] = (double)(int)(pMech->var.pJointVelocityBufferC[0][index] * 100000) / 100000;
-			pMech->var.pJointVelocityBufferC[1][index] = (double)(int)(pMech->var.pJointVelocityBufferC[1][index] * 100000) / 100000;
-			pMech->var.pJointVelocityBufferC[2][index] = (double)(int)(pMech->var.pJointVelocityBufferC[2][index] * 100000) / 100000;
+			pMech->var.pJointVelocityBufferC[0][index] = (double)(int)(pMech->var.pJointVelocityBufferC[0][index] * 10000000) / 10000000;
+			pMech->var.pJointVelocityBufferC[1][index] = (double)(int)(pMech->var.pJointVelocityBufferC[1][index] * 10000000) / 10000000;
+			pMech->var.pJointVelocityBufferC[2][index] = (double)(int)(pMech->var.pJointVelocityBufferC[2][index] * 10000000) / 10000000;
 		} 
 // 		if (pMech->var.moveType == ROCKS_MOVE_TYPE_LINEAR)
 // 		{
@@ -601,7 +607,8 @@ int _tmain(int argc, _TCHAR* argv[])
 
 #endif 
 
-// 	if (!DeltaInverseKinVelInitialize())
+//	DeltaInverseKinVelInitialize();
+// 	if (!GeschkinematikInitialize())
 // 		return -1;
 
 	if (!Rocks()) goto term;
@@ -627,7 +634,8 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 	}
 
-	//DeltaInverseKinVelTerminate();
+//	DeltaInverseKinVelTerminate();
+// 	GeschkinematikTerminate();
 stop:
 	CloseHandle(hEvStop);
 

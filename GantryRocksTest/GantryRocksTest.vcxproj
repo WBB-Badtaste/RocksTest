@@ -77,6 +77,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <None Include="DeltaInverseKinVel.dll" />
+    <None Include="Geschkinematik.dll" />
     <None Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
@@ -92,6 +93,7 @@
   </ItemGroup>
   <ItemGroup>
     <Library Include="DeltaInverseKinVel.lib" />
+    <Library Include="Geschkinematik.lib" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

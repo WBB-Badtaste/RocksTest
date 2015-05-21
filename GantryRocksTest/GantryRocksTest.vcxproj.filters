@@ -19,6 +19,9 @@
     <None Include="DeltaInverseKinVel.dll">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="Geschkinematik.dll">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -38,6 +41,9 @@
   </ItemGroup>
   <ItemGroup>
     <Library Include="DeltaInverseKinVel.lib">
+      <Filter>Resource Files</Filter>
+    </Library>
+    <Library Include="Geschkinematik.lib">
       <Filter>Resource Files</Filter>
     </Library>
   </ItemGroup>

@@ -1,19 +1,9 @@
 
 #include "DeltaInverseKinVel.h"
+#include "Geschkinematik.h"
+
 #define _USE_MATH_DEFINES
 #include <math.h>
-// robot geometry
-// (look at M_PIcs above for explanation)
-
-// 	  double e = 65.0;     // end effector
-// 	  double f = 150.0;     // base
-// 	  double re = 550.0;
-// 	  double rf = 200.0;
-	 
-double e = 65.46;     // end effector
-double f = 215.0;     // base
-double re = 770.0;
-double rf = 320.0;
 
 // trigonometric constants
 const double sqrt3 = sqrt(3.0);
@@ -22,6 +12,13 @@ const double cos120 = -0.5;
 const double tan60 = sqrt3;
 const double sin30 = 0.5;
 const double tan30 = 1 / sqrt3;
+
+// robot geometry
+// (look at M_PIcs above for explanation) 
+double e = 65.0 * sqrt3;     // end effector
+double f = 220.0 * sqrt3;     // base
+double re = 650.0;
+double rf = 330.0;
 
 int set(double a, double b, double c, double d){
     e = a;
@@ -145,25 +142,37 @@ int delta_velInverse(double x, double y, double z, double v_x, double v_y, doubl
 	mwArray mw_v_theta2(1,1,mxDOUBLE_CLASS);
 	mwArray mw_v_theta3(1,1,mxDOUBLE_CLASS);
 	DeltaInverseKinVel(3, mw_v_theta1, mw_v_theta2, mw_v_theta3, mw_x, mw_y, mw_z, mw_v_x, mw_v_y, mw_v_z, mw_theta1, mw_theta2, mw_theta3, mw_f, mw_rf, mw_e);
+	//Geschkinematik(3, mw_v_theta1, mw_v_theta2, mw_v_theta3, mw_x, mw_y, mw_z, mw_theta1, mw_theta2, mw_theta3, mw_v_x, mw_v_y, mw_v_z, mw_f, mw_e, mw_rf);
 	vel_theta1 = mw_v_theta1(1,1);
 	vel_theta2 = mw_v_theta2(1,1);
 	vel_theta3 = mw_v_theta3(1,1);
 	
 	return 0;
+
+	
 }
 */
+
+
 int delta_velInverse(double x, double y, double z, double v_x, double v_y, double v_z, double theta1, double theta2, double theta3, double& vel_theta1, double& vel_theta2, double& vel_theta3)
 {
-	double wb = f * sqrt(3.0) / 6;
-	double wp =  e / sqrt(3.0);
+	double wb = f * sqrt3 / 6;
+	double wp = e / 4 / sqrt3;
 	double up = wp * 2;
 
 	double a = wb - up;
-	double b = e / 2 - sqrt(3.0) / 2 * wb;
+	double b = e / 2 - sqrt3 / 2 * wb;
 	double c = wp - wb / 2; 
 
-	vel_theta1 = (x * v_x + (y + a) * v_y + rf * v_y * cos(theta1) + z * v_z + rf * v_z * sin(theta1)) / (rf * ((y + a) * sin(theta1) - z * cos(theta1)));
-	vel_theta2 = (2 * (x + b) * v_x + 2 * (y + c) * v_y - rf * (sqrt(3.0) * v_x + v_y) * cos(theta2) + 2 * z * v_z + 2 * rf * v_z * sin(theta2)) / (-rf * ((sqrt(3.0) * (x + b) + y + c) * sin(theta2) + 2 * z * cos(theta2)));
-	vel_theta3 = (2 * (x - b) * v_x + 2 * (y + c) * v_y + rf * (sqrt(3.0) * v_x - v_y) * cos(theta3) + 2 * z * v_z + 2 * rf * v_z * sin(theta3)) / ( rf * ((sqrt(3.0) * (x - b) - y - c) * sin(theta3) - 2 * z * cos(theta3)));
-	return 0;
+	double cos_theta1 = cos(theta1);
+	double sin_theta1 = sin(theta1);
+	double cos_theta2 = cos(theta2);
+	double sin_theta2 = sin(theta2);
+	double cos_theta3 = cos(theta3);
+	double sin_theta3 = sin(theta3);
+
+	vel_theta1 = (x * v_x + ((y + a) + rf * cos_theta1) * v_y + (z + rf * sin_theta1)* v_z) / (rf * ((y + a) * sin_theta1 - z * cos_theta1));
+	vel_theta2 = ((2 * (x + b) - sqrt3 * rf * cos_theta2) * v_x + (2 * (y + c) - rf * cos_theta2) * v_y + 2 * (z + rf * sin_theta2 * v_z)) / (-rf * ((sqrt3 * (x + b) + y + c) * sin_theta2 + 2 * z * cos_theta2));
+	vel_theta3 = ((2 * (x - b) + sqrt3 * rf * cos_theta3) * v_x + (2 * (y + c) - rf * cos_theta3) * v_y + 2 * (z + rf * sin_theta3 * v_z)) / ( rf * ((sqrt3 * (x - b) - y - c) * sin_theta3 - 2 * z * cos_theta3));
+	return 0; 
 }
