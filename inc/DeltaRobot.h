@@ -76,8 +76,8 @@ int delta_calcForward(double theta1, double theta2, double theta3, double &x0, d
 	return 0;
 } 
  
-	 // inverse kinematics
-	 // helper functions, calculates angle theta1 (for YZ-pane)
+// inverse kinematics
+// helper functions, calculates angle theta1 (for YZ-pane)
 int delta_calcAngleYZ(double x0, double y0, double z0, double &theta) {
 	double y1 = -0.5 * tan30 * f; // f/2 * tg 30
 	y0 -= 0.5 * tan30 * e;    // shift center to edge
@@ -103,12 +103,33 @@ int delta_calcInverse(double x0, double y0, double z0, double &theta1, double &t
 	return status;
 }
 
-
 //vel IK
+int delta_velInverse(double x, double y, double z, double v_x, double v_y, double v_z, double theta1, double theta2, double theta3, double& vel_theta1, double& vel_theta2, double& vel_theta3)
+{
+	double wb = f * sqrt3 / 6;
+	double wp = e / 4 / sqrt3;
+	double up = wp * 2;
+
+	double a = wb - up;
+	double b = e / 2 - sqrt3 / 2 * wb;
+	double c = wp - wb / 2; 
+
+	double cos_theta1 = cos(theta1);
+	double sin_theta1 = sin(theta1);
+	double cos_theta2 = cos(theta2);
+	double sin_theta2 = sin(theta2);
+	double cos_theta3 = cos(theta3);
+	double sin_theta3 = sin(theta3);
+
+	vel_theta1 = (x * v_x + ((y + a) + rf * cos_theta1) * v_y + (z + rf * sin_theta1)* v_z) / (rf * ((y + a) * sin_theta1 - z * cos_theta1));
+	vel_theta2 = ((2 * (x + b) - sqrt3 * rf * cos_theta2) * v_x + (2 * (y + c) - rf * cos_theta2) * v_y + 2 * (z + rf * sin_theta2 * v_z)) / (-rf * ((sqrt3 * (x + b) + y + c) * sin_theta2 + 2 * z * cos_theta2));
+	vel_theta3 = ((2 * (x - b) + sqrt3 * rf * cos_theta3) * v_x + (2 * (y + c) - rf * cos_theta3) * v_y + 2 * (z + rf * sin_theta3 * v_z)) / ( rf * ((sqrt3 * (x - b) - y - c) * sin_theta3 - 2 * z * cos_theta3));
+	return 0; 
+}
+
 /*
 int delta_velInverse(double x, double y, double z, double v_x, double v_y, double v_z, double theta1, double theta2, double theta3, double& vel_theta1, double& vel_theta2, double& vel_theta3)
 {
-
 	vel_theta1 = vel_theta2 = vel_theta3 = 0.0;
 	mwArray mw_f(1,1,mxDOUBLE_CLASS);
 	mwArray mw_e(1,1,mxDOUBLE_CLASS);
@@ -148,31 +169,5 @@ int delta_velInverse(double x, double y, double z, double v_x, double v_y, doubl
 	vel_theta3 = mw_v_theta3(1,1);
 	
 	return 0;
-
-	
 }
 */
-
-
-int delta_velInverse(double x, double y, double z, double v_x, double v_y, double v_z, double theta1, double theta2, double theta3, double& vel_theta1, double& vel_theta2, double& vel_theta3)
-{
-	double wb = f * sqrt3 / 6;
-	double wp = e / 4 / sqrt3;
-	double up = wp * 2;
-
-	double a = wb - up;
-	double b = e / 2 - sqrt3 / 2 * wb;
-	double c = wp - wb / 2; 
-
-	double cos_theta1 = cos(theta1);
-	double sin_theta1 = sin(theta1);
-	double cos_theta2 = cos(theta2);
-	double sin_theta2 = sin(theta2);
-	double cos_theta3 = cos(theta3);
-	double sin_theta3 = sin(theta3);
-
-	vel_theta1 = (x * v_x + ((y + a) + rf * cos_theta1) * v_y + (z + rf * sin_theta1)* v_z) / (rf * ((y + a) * sin_theta1 - z * cos_theta1));
-	vel_theta2 = ((2 * (x + b) - sqrt3 * rf * cos_theta2) * v_x + (2 * (y + c) - rf * cos_theta2) * v_y + 2 * (z + rf * sin_theta2 * v_z)) / (-rf * ((sqrt3 * (x + b) + y + c) * sin_theta2 + 2 * z * cos_theta2));
-	vel_theta3 = ((2 * (x - b) + sqrt3 * rf * cos_theta3) * v_x + (2 * (y + c) - rf * cos_theta3) * v_y + 2 * (z + rf * sin_theta3 * v_z)) / ( rf * ((sqrt3 * (x - b) - y - c) * sin_theta3 - 2 * z * cos_theta3));
-	return 0; 
-}
