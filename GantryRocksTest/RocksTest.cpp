@@ -304,11 +304,11 @@ unsigned __stdcall ThreadRocksLoop(void* lpParam)
 		Status = NyceError( Status ) ? Status : RocksKinInverseDelta( &m_mech, &kinPars );
 		//Status = NyceError( Status ) ? Status : RocksKinInverseGantry( &m_mech, &kinPars );
 
-		ofstream file("..//data3.txt");	
+		ofstream file("..//SplineDatas.txt");	
 		file<<m_mech.var.startPos[0]<< " "<<m_mech.var.startPos[1]<<" "<<m_mech.var.startPos[2]<<endl;
 		for (int i = 0; i < m_mech.var.usedNrOfSplines; ++i)
 		{
-			file<<i<<" "<<m_mech.var.pPositionSplineBuffer[i]<<" "<<m_mech.var.pJointPositionBufferC[0][i]<<" "<<m_mech.var.pJointVelocityBufferC[0][i]<<" "<<m_mech.var.pJointPositionBufferC[1][i]<<" "<<m_mech.var.pJointVelocityBufferC[1][i]<<" "<<m_mech.var.pJointPositionBufferC[2][i]<<" "<<m_mech.var.pJointVelocityBufferC[2][i]<<endl;
+			file<<"|"<<i<<"|"<<m_mech.var.pPositionSplineBuffer[i]<<"|"<<m_mech.var.pVelocitySplineBuffer[i]<<"|"<<m_mech.var.pJointPositionBufferC[0][i]<<"|"<<m_mech.var.pJointVelocityBufferC[0][i]<<"|"<<m_mech.var.pJointPositionBufferC[1][i]<<"|"<<m_mech.var.pJointVelocityBufferC[1][i]<<"|"<<m_mech.var.pJointPositionBufferC[2][i]<<"|"<<m_mech.var.pJointVelocityBufferC[2][i]<<endl;
 		}
 
 

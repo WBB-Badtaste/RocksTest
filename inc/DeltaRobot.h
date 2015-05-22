@@ -15,8 +15,8 @@ const double tan30 = 1 / sqrt3;
 
 // robot geometry
 // (look at M_PIcs above for explanation) 
-double e = 65.0 * sqrt3;     // end effector
-double f = 220.0 * sqrt3;     // base
+double e = 65.0;     // end effector
+double f = 220.0;     // base
 double re = 650.0;
 double rf = 330.0;
 
@@ -25,7 +25,7 @@ double mm2pu = 1;//convert mm unit to pu
 // forward kinematics: (theta1, theta2, theta3) -> (x0, y0, z0)
 // returned status: 0=OK, -1=non-existing position
 int delta_calcForward(double theta1, double theta2, double theta3, double &x0, double &y0, double &z0) {
-	double t = (f - e) * tan30 * 0.5;
+	double t = f - e;
 	
 	double y1 = -(t + rf * cos(theta1));
 	double z1 = -rf * sin(theta1);
@@ -62,8 +62,6 @@ int delta_calcForward(double theta1, double theta2, double theta3, double &x0, d
 	if (d < 0) return -1; // non-existing point
 	
 	z0 = -0.5 * (b + sqrt(d)) / a;
-	if (z0 > z1 || z0 > z2 || z0 >z3) return -1;
-	    
 	x0 = (a1 * z0 + b1) / dnm;
 	y0 = (a2 * z0 + b2) / dnm;
 	 
@@ -73,8 +71,8 @@ int delta_calcForward(double theta1, double theta2, double theta3, double &x0, d
 // inverse kinematics
 // helper functions, calculates angle theta1 (for YZ-pane)
 int delta_calcAngleYZ(double x0, double y0, double z0, double &theta) {
-	double y1 = -0.5 * tan30 * f; // f/2 * tg 30
-	y0 -= 0.5 * tan30 * e;    // shift center to edge
+	double y1 = -f; 
+	y0 -= e;    // shift center to edge
 	// z = a + b*y
 	double a = (x0 * x0 + y0 * y0 + z0 * z0 + rf * rf - re * re - y1 * y1) / (2 * z0);
 	double b = (y1 - y0) / z0;
@@ -100,12 +98,12 @@ int delta_calcInverse(double x0, double y0, double z0, double &theta1, double &t
 //vel IK
 int delta_velInverse(double x, double y, double z, double v_x, double v_y, double v_z, double theta1, double theta2, double theta3, double& vel_theta1, double& vel_theta2, double& vel_theta3)
 {
-	double wb = f * sqrt3 / 6;
-	double wp = e / 4 / sqrt3;
-	double up = wp * 2;
+	double wb = f;
+	double up = e;
+	double wp = up / 2;
 
 	double a = wb - up;
-	double b = e / 2 - sqrt3 / 2 * wb;
+	double b = sqrt3 / 2 * (e - wb);
 	double c = wp - wb / 2; 
 
 	double cos_theta1 = cos(theta1);
@@ -121,47 +119,3 @@ int delta_velInverse(double x, double y, double z, double v_x, double v_y, doubl
 	return 0; 
 }
 
-/*
-int delta_velInverse(double x, double y, double z, double v_x, double v_y, double v_z, double theta1, double theta2, double theta3, double& vel_theta1, double& vel_theta2, double& vel_theta3)
-{
-	vel_theta1 = vel_theta2 = vel_theta3 = 0.0;
-	mwArray mw_f(1,1,mxDOUBLE_CLASS);
-	mwArray mw_e(1,1,mxDOUBLE_CLASS);
-	mwArray mw_rf(1,1,mxDOUBLE_CLASS);
-	mw_f(1,1) = f;
-	mw_e(1,1) = e;
-	mw_rf(1,1) = rf;
-
-	mwArray mw_theta1(1,1,mxDOUBLE_CLASS);
-	mwArray mw_theta2(1,1,mxDOUBLE_CLASS);
-	mwArray mw_theta3(1,1,mxDOUBLE_CLASS);
-	mw_theta1(1,1) = theta1;
-	mw_theta2(1,1) = theta2;
-	mw_theta3(1,1) = theta3;
-
-	mwArray mw_x(1,1,mxDOUBLE_CLASS);
-	mwArray mw_y(1,1,mxDOUBLE_CLASS);
-	mwArray mw_z(1,1,mxDOUBLE_CLASS);
-	mw_x(1,1) = x;
-	mw_y(1,1) = y;
-	mw_z(1,1) = z;
-
-	mwArray mw_v_x(1,1,mxDOUBLE_CLASS);
-	mwArray mw_v_y(1,1,mxDOUBLE_CLASS);
-	mwArray mw_v_z(1,1,mxDOUBLE_CLASS);
-	mw_v_x(1,1) = v_x;
-	mw_v_y(1,1) = v_y;
-	mw_v_z(1,1) = v_z;
-
-	mwArray mw_v_theta1(1,1,mxDOUBLE_CLASS);
-	mwArray mw_v_theta2(1,1,mxDOUBLE_CLASS);
-	mwArray mw_v_theta3(1,1,mxDOUBLE_CLASS);
-	DeltaInverseKinVel(3, mw_v_theta1, mw_v_theta2, mw_v_theta3, mw_x, mw_y, mw_z, mw_v_x, mw_v_y, mw_v_z, mw_theta1, mw_theta2, mw_theta3, mw_f, mw_rf, mw_e);
-	//Geschkinematik(3, mw_v_theta1, mw_v_theta2, mw_v_theta3, mw_x, mw_y, mw_z, mw_theta1, mw_theta2, mw_theta3, mw_v_x, mw_v_y, mw_v_z, mw_f, mw_e, mw_rf);
-	vel_theta1 = mw_v_theta1(1,1);
-	vel_theta2 = mw_v_theta2(1,1);
-	vel_theta3 = mw_v_theta3(1,1);
-	
-	return 0;
-}
-*/
