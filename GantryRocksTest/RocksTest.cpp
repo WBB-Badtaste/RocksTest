@@ -366,8 +366,8 @@ BOOL Rocks(void)
 
 	// Define the circle
 	// -----------------
-	sineAccPars.maxVelocity = 500;
-	sineAccPars.maxAcceleration = 20000;
+	sineAccPars.maxVelocity = 6000;
+	sineAccPars.maxAcceleration = 60000;
 	sineAccPars.splineTime = 0.01;
 	sineAccPars.center[ 0 ] = 150.0;
 	sineAccPars.center[ 1 ] = 0.0;
