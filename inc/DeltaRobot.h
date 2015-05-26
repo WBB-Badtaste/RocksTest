@@ -28,7 +28,7 @@ int delta_calcForward(double theta1, double theta2, double theta3, double &x0, d
 	double y1 = -(t + rf * cos(theta1));
 	double z1 = -rf * sin(theta1);
 	
-	double y2 = (t + rf * cos(theta2)) * sin30;
+	double y2 = (t + rf * cos(theta2)) * sin30;  
 	double x2 = y2 * tan60;
 	double z2 = -rf * sin(theta2);
 	
