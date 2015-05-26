@@ -177,7 +177,7 @@ BOOL InitAxis(void)
 
 ROCKS_MECH  m_mech;
 ROCKS_KIN_INV_PARS kinPars;
-ROCKS_TRAJ_PATH rocksTrajPath1, rocksTrajPath2;
+ROCKS_TRAJ_PATH rocksTrajPath;
 ROCKS_POSE rocksPose;
 BOOL bRocksTerm = FALSE;
 BOOL bTurn = FALSE;
@@ -187,7 +187,7 @@ NYCE_STATUS RocksKinForwardDelta(struct rocks_mech* pMech, const double pJointPo
 {
 	ZeroMemory(pMechPos, sizeof(double) * ROCKS_MECH_MAX_DOF);
 	double rate_angle2pu[ROCKS_MECH_MAX_NR_OF_JOINTS];
-	for (int ax = 0; ax < pMech->nrOfJoints; ++ax)//只在当前情况下有效
+	for (uint32_t ax = 0; ax < pMech->nrOfJoints; ++ax)//只在当前情况下有效
 	{
 		rate_angle2pu[ax] = 0.5 / M_PI;
 	}
@@ -199,7 +199,7 @@ NYCE_STATUS RocksKinDeltaPosition(struct rocks_mech* pMech, double pPos[])
 {
 	double *pJointPos = new double[ROCKS_MECH_MAX_DOF];
 	NYCE_STATUS nyceStatus = NYCE_OK;
-	for (int ax = 0; ax < pMech->nrOfJoints; ax++)
+	for (uint32_t ax = 0; ax < pMech->nrOfJoints; ax++)
 	{
 		nyceStatus = NyceError(nyceStatus) ? nyceStatus : SacReadVariable(axId[ax], SAC_VAR_AXIS_POS, &pJointPos[ax]);
 	}
@@ -210,7 +210,7 @@ NYCE_STATUS RocksKinDeltaPosition(struct rocks_mech* pMech, double pPos[])
 NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pKin)
 {
 	double rate_angle2pu[ROCKS_MECH_MAX_NR_OF_JOINTS];
-	int ax = 0;
+	uint32_t ax = 0;
 	while (!pMech->var.jointBuffersAllocated)
 	{
  		pMech->var.pJointPositionBufferC[ax] = (double*)malloc(sizeof(double) * pMech->var.maxNrOfSplines);
@@ -223,8 +223,7 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 		rate_angle2pu[ax] = 0.5 / M_PI;
 	}
 
-	int index = 0;
-	for (index = 0; index < pMech->var.usedNrOfSplines; ++index)
+	for (uint32_t index = 0; index < pMech->var.usedNrOfSplines; ++index)
 	{
 		double pos_x,pos_y,pos_z,vel_x,vel_y,vel_z;
 		double pos_joint_x, pos_joint_y, pos_joint_z;//joint angle(JA)
@@ -259,6 +258,16 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 		pMech->var.pJointVelocityBufferC[1][index] = vel_joint_y * rate_angle2pu[1];
 		pMech->var.pJointVelocityBufferC[2][index] = vel_joint_z * rate_angle2pu[2];
 
+		if (index == 0 || index == pMech->var.usedNrOfSplines - 1)
+		{
+			pMech->var.pJointPositionBufferC[0][index] = (double)(int)(pMech->var.pJointPositionBufferC[0][index] * 100000) / 100000;
+			pMech->var.pJointPositionBufferC[1][index] = (double)(int)(pMech->var.pJointPositionBufferC[1][index] * 100000) / 100000;
+			pMech->var.pJointPositionBufferC[2][index] = (double)(int)(pMech->var.pJointPositionBufferC[2][index] * 100000) / 100000;
+
+			pMech->var.pJointVelocityBufferC[0][index] = (double)(int)(pMech->var.pJointVelocityBufferC[0][index] * 100000) / 100000;
+			pMech->var.pJointVelocityBufferC[1][index] = (double)(int)(pMech->var.pJointVelocityBufferC[1][index] * 100000) / 100000;
+			pMech->var.pJointVelocityBufferC[2][index] = (double)(int)(pMech->var.pJointVelocityBufferC[2][index] * 100000) / 100000;
+		}
 	}
 	pMech->var.mechStep = ROCKS_MECH_STEP_VALID_INV_KINEMATICS;
 	pMech->var.pApplyForwardKinFunc = RocksKinForwardDelta;
@@ -275,21 +284,21 @@ unsigned __stdcall ThreadRocksLoop(void* lpParam)
 
 	while(!bRocksTerm)
 	{
-		Status = NyceError( Status ) ? Status : RocksTrajLoadPath(&m_mech, &rocksTrajPath1);
+		Status = NyceError( Status ) ? Status : RocksTrajLoadPath(&m_mech, &rocksTrajPath);
 
 		Status = NyceError( Status ) ? Status : RocksKinInverseDelta( &m_mech, &kinPars );
 
 		ofstream file("..//SplineDatas.txt");	
 		file<<m_mech.var.startPos[0]<< " "<<m_mech.var.startPos[1]<<" "<<m_mech.var.startPos[2]<<endl;
-		file<<"|Index|TCPW|TCVW|A1PJ|A1VJ|A2PJ|A2VJ|A3PJ|A3VJ"<<endl<<"|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:"<<endl;
-		for (int i = 0; i < m_mech.var.usedNrOfSplines; ++i)
+		file<<"|Index|TCPP|TCVP|A1PJ|A1VJ|A2PJ|A2VJ|A3PJ|A3VJ"<<endl<<"|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:"<<endl;
+		for (uint32_t i = 0; i < m_mech.var.usedNrOfSplines; ++i)
 		{
 			file<<"|"<<i<<"|"<<m_mech.var.pPositionSplineBuffer[i]<<"|"<<m_mech.var.pVelocitySplineBuffer[i]<<"|"<<m_mech.var.pJointPositionBufferC[0][i]<<"|"<<m_mech.var.pJointVelocityBufferC[0][i]<<"|"<<m_mech.var.pJointPositionBufferC[1][i]<<"|"<<m_mech.var.pJointVelocityBufferC[1][i]<<"|"<<m_mech.var.pJointPositionBufferC[2][i]<<"|"<<m_mech.var.pJointVelocityBufferC[2][i]<<endl;
 		}
 
 		// Feed splines to the joints
 		// --------------------------
-		Status = NyceError( Status ) ? Status : RocksStream( &m_mech);
+		Status = NyceError( Status ) ? Status : RocksStream( &m_mech);	
 
 		// Synchronize on motion complete                           
 		// ------------------------------
@@ -303,7 +312,7 @@ unsigned __stdcall ThreadRocksLoop(void* lpParam)
 		}
 	}	
 
-	Status = NyceError( Status ) ? Status : RocksTrajDeletePath( &m_mech, &rocksTrajPath1 );
+	Status = NyceError( Status ) ? Status : RocksTrajDeletePath( &m_mech, &rocksTrajPath);
 
 	// Delete mechanism
 	// ----------------
@@ -320,7 +329,6 @@ BOOL Rocks(void)
 {
 	
 	ROCKS_TRAJ_SINE_ACC_CIRCLE_PARS sineAccPars;
-	ROCKS_TRAJ_SINE_ACC_PTP_PARS sineAccPtpPars1, sineAccPtpPars2;
 	// Create mechanism
 	// ----------------
 	m_mech.nrOfJoints = NUM_AXES; // X1, X2, Y and Z
@@ -340,9 +348,9 @@ BOOL Rocks(void)
 
 	// Define the circle
 	// -----------------
-	sineAccPars.maxVelocity = 100;
-	sineAccPars.maxAcceleration = 100;
-	sineAccPars.splineTime = 0.1;
+	sineAccPars.maxVelocity = 5000;
+	sineAccPars.maxAcceleration = 50000;
+	sineAccPars.splineTime = 0.01;
 	sineAccPars.center[ 0 ] = 150.0;
 	sineAccPars.center[ 1 ] = 0.0;
 	sineAccPars.angle = M_PI * 8;
@@ -354,10 +362,6 @@ BOOL Rocks(void)
 	// Get current position
 	// --------------------
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinDeltaPosition(&m_mech, sineAccPars.startPos);
-
-
-	sineAccPtpPars1.endPos[1] = 6;
-	sineAccPtpPars2.startPos[1] = 6;
 
 	// Get path splinesc
 	// ----------------
@@ -378,8 +382,7 @@ BOOL Rocks(void)
 	rocksPose.t.z = 0;
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinMoveOrigin(&m_mech, &rocksPose);
 
-	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajGetPath( &m_mech, &rocksTrajPath1);
-
+	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajGetPath( &m_mech, &rocksTrajPath);
 
 	if (NyceError( nyceStatus ))
 	{
