@@ -5,6 +5,8 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
+using namespace std;
+
 // trigonometric constants
 const double sqrt3 = sqrt(3.0);
 const double sin120 = sqrt3 / 2.0;   
@@ -114,8 +116,7 @@ int delta_velInverse(double x, double y, double z, double v_x, double v_y, doubl
 	double sin_theta3 = sin(theta3);
 
 	vel_theta1 = (x * v_x + ((y + a) + rf * cos_theta1) * v_y + (z + rf * sin_theta1)* v_z) / (rf * ((y + a) * sin_theta1 - z * cos_theta1));
-	vel_theta2 = ((2 * (x + b) - sqrt3 * rf * cos_theta2) * v_x + (2 * (y + c) - rf * cos_theta2) * v_y + 2 * (z + rf * sin_theta2 * v_z)) / (-rf * ((sqrt3 * (x + b) + y + c) * sin_theta2 + 2 * z * cos_theta2));
-	vel_theta3 = ((2 * (x - b) + sqrt3 * rf * cos_theta3) * v_x + (2 * (y + c) - rf * cos_theta3) * v_y + 2 * (z + rf * sin_theta3 * v_z)) / ( rf * ((sqrt3 * (x - b) - y - c) * sin_theta3 - 2 * z * cos_theta3));
+	vel_theta2 = ((2 * (x + b) - sqrt3 * rf * cos_theta2) * v_x + (2 * (y + c) - rf * cos_theta2) * v_y + 2 * (z + rf * sin_theta2) * v_z) / (-rf * ((sqrt3 * (x + b) + y + c) * sin_theta2 + 2 * z * cos_theta2));
+	vel_theta3 = ((2 * (x - b) + sqrt3 * rf * cos_theta3) * v_x + (2 * (y + c) - rf * cos_theta3) * v_y + 2 * (z + rf * sin_theta3) * v_z) / ( rf * ((sqrt3 * (x - b) - y - c) * sin_theta3 - 2 * z * cos_theta3));
 	return 0; 
 }
-
