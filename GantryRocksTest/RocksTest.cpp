@@ -183,6 +183,7 @@ ROCKS_MECH  m_mech;
 ROCKS_KIN_INV_PARS kinPars;
 ROCKS_TRAJ_PATH rocksTrajPath;
 ROCKS_POSE rocksPose;
+ROCKS_TRAJ_SINE_ACC_CIRCLE_PARS sineAccPars;
 BOOL bRocksTerm = FALSE;
 BOOL bTurn = FALSE;
 HANDLE hThreadRocks;
@@ -205,8 +206,13 @@ NYCE_STATUS RocksKinDeltaPosition(struct rocks_mech* pMech, double pPos[])
 	NYCE_STATUS nyceStatus = NYCE_OK;
 	for (uint32_t ax = 0; ax < pMech->nrOfJoints; ax++)
 	{
-		nyceStatus = NyceError(nyceStatus) ? nyceStatus : SacReadVariable(axId[ax], SAC_VAR_AXIS_POS, &pJointPos[ax]);
+		nyceStatus = NyceError(nyceStatus) ? nyceStatus : SacReadVariable(axId[ax], SAC_VAR_SETPOINT_POS, &pJointPos[ax]);
 	}
+
+	double a = pJointPos[0];
+	double b = pJointPos[1];
+	double c = pJointPos[2];
+
 	nyceStatus = NyceError(nyceStatus) ? nyceStatus : RocksKinForwardDelta(pMech, pJointPos, pPos);	
 
 	pPos[0] = (double)(int)(pPos[0] * 100000) / 100000;
@@ -293,10 +299,16 @@ unsigned __stdcall ThreadRocksLoop(void* lpParam)
 
 	while(!bRocksTerm)
 	{
-		Sleep(3000);//≤‚ ‘
+		// Get current position
+		// --------------------
+		Status = NyceError( Status ) ? Status : RocksKinDeltaPosition(&m_mech, sineAccPars.startPos);
 
-		Status = NyceError( Status ) ? Status : RocksTrajLoadPath(&m_mech, &rocksTrajPath);
-
+		// Get path splinesc
+		// ----------------
+		Status = NyceError( Status ) ? Status : RocksTrajSineAccCircle( &m_mech, &sineAccPars );
+		
+		// Apply inverse kinematics to get joint splines
+		// ---------------------------------------------
 		Status = NyceError( Status ) ? Status : RocksKinInverseDelta( &m_mech, &kinPars );
 
 		ofstream file("..//SplineDatas.txt");	
@@ -341,8 +353,6 @@ unsigned __stdcall ThreadRocksLoop(void* lpParam)
 
 BOOL Rocks(void)
 {
-	
-	ROCKS_TRAJ_SINE_ACC_CIRCLE_PARS sineAccPars;
 	// Create mechanism
 	// ----------------
 	m_mech.nrOfJoints = NUM_AXES; // X1, X2, Y and Z
@@ -358,30 +368,17 @@ BOOL Rocks(void)
 	}
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksMechCreate( &m_mech );
 
-	//nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinDefineGantry( &m_mech, ROCKS_GANTRY_Y );
-
-	// Define the circle
-	// -----------------
 	sineAccPars.maxVelocity = 10000;
 	sineAccPars.maxAcceleration = 100000;
-	sineAccPars.splineTime = 0.0002;
+	sineAccPars.splineTime = 0.001;
 	sineAccPars.center[ 0 ] = 150.0;
 	sineAccPars.center[ 1 ] = 0.0;
 	sineAccPars.angle = M_PI * 8;
 	sineAccPars.plane = ROCKS_PLANE_XY;
-	sineAccPars.maxNrOfSplines =  0;
+	sineAccPars.maxNrOfSplines = 0;
 	sineAccPars.pPositionSplineBuffer = NULL;
 	sineAccPars.pVelocitySplineBuffer = NULL;
 	
-	// Get current position
-	// --------------------
-	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinDeltaPosition(&m_mech, sineAccPars.startPos);
-
-	// Get path splinesc
-	// ----------------
-	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSineAccCircle( &m_mech, &sineAccPars );
-	// Apply inverse kinematics to get joint splines
-	// ---------------------------------------------
 	for (int ax = 0; ax < NUM_AXES; ++ax)
 	{
 		kinPars.pJointPositionBuffer[ ax ] = NULL;
@@ -394,9 +391,7 @@ BOOL Rocks(void)
 	rocksPose.t.x = 0;
 	rocksPose.t.y = 0;
 	rocksPose.t.z = 0;
-	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinMoveOrigin(&m_mech, &rocksPose);
-
-	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajGetPath( &m_mech, &rocksTrajPath);
+	//nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinMoveOrigin(&m_mech, &rocksPose);
 
 	if (NyceError( nyceStatus ))
 	{
