@@ -205,7 +205,7 @@ NYCE_STATUS RocksKinDeltaPosition(struct rocks_mech* pMech, double pPos[])
 	NYCE_STATUS nyceStatus = NYCE_OK;
 	for (uint32_t ax = 0; ax < pMech->nrOfJoints; ax++)
 	{
-		nyceStatus = NyceError(nyceStatus) ? nyceStatus : SacReadVariable(axId[ax], SAC_VAR_AXIS_POS, &pJointPos[ax]);
+		nyceStatus = NyceError(nyceStatus) ? nyceStatus : SacReadVariable(axId[ax], SAC_VAR_SETPOINT_POS, &pJointPos[ax]);
 	}
 	nyceStatus = NyceError(nyceStatus) ? nyceStatus : RocksKinForwardDelta(pMech, pJointPos, pPos);	
 
@@ -293,8 +293,6 @@ unsigned __stdcall ThreadRocksLoop(void* lpParam)
 
 	while(!bRocksTerm)
 	{
-		Sleep(3000);//≤‚ ‘
-
 		Status = NyceError( Status ) ? Status : RocksTrajLoadPath(&m_mech, &rocksTrajPath);
 
 		Status = NyceError( Status ) ? Status : RocksKinInverseDelta( &m_mech, &kinPars );
