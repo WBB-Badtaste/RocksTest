@@ -24,7 +24,7 @@ using namespace std;
 //#define GET_MOTION_VAR
 //#define USE_NODE
 #define USE_AXIS
-//#define SIM_METHOD
+#define SIM_METHOD
 
 NYCE_STATUS nyceStatus;
 HANDLE hEvStop;
