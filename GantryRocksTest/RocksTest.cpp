@@ -216,6 +216,88 @@ NYCE_STATUS RocksKinDeltaPosition(struct rocks_mech* pMech, double pPos[])
 	return nyceStatus;
 }
 
+void DeltaPath2WorldCoordinate(ROCKS_MECH* pMech, uint32_t index, double *pPosition, double *pVelocity)
+{
+	if (pMech->var.moveType == ROCKS_MOVE_TYPE_CIRCULAR)//check the path type
+	{
+		double beta = pMech->var.center[1] <= 0 ? 
+			acos(-pMech->var.center[0] / sqrt(pMech->var.center[0] * pMech->var.center[0] + pMech->var.center[1] * pMech->var.center[1])) : 
+		M_PI * 2 - acos(-pMech->var.center[0] / sqrt(pMech->var.center[0] * pMech->var.center[0] + pMech->var.center[1] * pMech->var.center[1]));
+		double angle = beta - pMech->var.pPositionSplineBuffer[index] / pMech->var.radius;
+
+		double CenterWorldCoordinate[3];
+		switch(pMech->var.plane)
+		{
+		case ROCKS_PLANE_XY:
+			CenterWorldCoordinate[0] = pMech->var.startPos[0] + pMech->var.center[0];
+			CenterWorldCoordinate[1] = pMech->var.startPos[1] + pMech->var.center[1];
+			CenterWorldCoordinate[2] = pMech->var.startPos[2];
+
+			pPosition[0] = CenterWorldCoordinate[0] + pMech->var.radius * cos(angle);
+			pPosition[1] = CenterWorldCoordinate[1] + pMech->var.radius * sin(angle);
+			pPosition[2] = CenterWorldCoordinate[2];
+
+			if (pMech->var.angle > 0)
+			{
+				pVelocity[0] = pMech->var.pVelocitySplineBuffer[index] * sin(angle);
+				pVelocity[1] = -pMech->var.pVelocitySplineBuffer[index] * cos(angle);
+				pVelocity[2] = 0;
+			}
+			else
+			{
+				pVelocity[0] = -pMech->var.pVelocitySplineBuffer[index] * sin(angle);
+				pVelocity[1] = pMech->var.pVelocitySplineBuffer[index] * cos(angle);
+				pVelocity[2] = 0;
+			}
+			break;
+		case ROCKS_PLANE_YZ:
+			CenterWorldCoordinate[0] = pMech->var.startPos[0];
+			CenterWorldCoordinate[1] = pMech->var.startPos[1] + pMech->var.center[0];
+			CenterWorldCoordinate[2] = pMech->var.startPos[2] + pMech->var.center[1];
+
+			pPosition[0] = CenterWorldCoordinate[0];
+			pPosition[1] = CenterWorldCoordinate[1] + pMech->var.radius * cos(angle);
+			pPosition[2] = CenterWorldCoordinate[2] + pMech->var.radius * sin(angle);
+
+			if (pMech->var.angle > 0)
+			{
+				pVelocity[0] = 0;
+				pVelocity[1] = pMech->var.pVelocitySplineBuffer[index] * sin(angle);
+				pVelocity[2] = -pMech->var.pVelocitySplineBuffer[index] * cos(angle);
+			}
+			else
+			{
+				pVelocity[0] = 0;
+				pVelocity[1] = -pMech->var.pVelocitySplineBuffer[index] * sin(angle);
+				pVelocity[2] = pMech->var.pVelocitySplineBuffer[index] * cos(angle);
+			}
+			break;
+		case ROCKS_PLANE_ZX:
+			CenterWorldCoordinate[0] = pMech->var.startPos[0] + pMech->var.center[1];
+			CenterWorldCoordinate[1] = pMech->var.startPos[1];
+			CenterWorldCoordinate[2] = pMech->var.startPos[2] + pMech->var.center[0];
+
+			pPosition[0] = CenterWorldCoordinate[0] + pMech->var.radius * sin(angle);
+			pPosition[1] = CenterWorldCoordinate[1];
+			pPosition[2] = CenterWorldCoordinate[2] + pMech->var.radius * cos(angle);
+
+			if (pMech->var.angle > 0)
+			{
+				pVelocity[0] = -pMech->var.pVelocitySplineBuffer[index] * cos(angle);
+				pVelocity[1] = 0;
+				pVelocity[2] = pMech->var.pVelocitySplineBuffer[index] * sin(angle);
+			}
+			else
+			{
+				pVelocity[0] = pMech->var.pVelocitySplineBuffer[index] * cos(angle);
+				pVelocity[1] = 0;
+				pVelocity[2] = -pMech->var.pVelocitySplineBuffer[index] * sin(angle);
+			}
+			break;
+		}
+	} 
+} 
+
 NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pKin)
 {
 	double rate_angle2pu[ROCKS_MECH_MAX_NR_OF_JOINTS];
@@ -234,33 +316,20 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 
 	for (uint32_t index = 0; index < pMech->var.usedNrOfSplines; ++index)
 	{
-		double pos_x,pos_y,pos_z,vel_x,vel_y,vel_z;
+		double pos[3],vel[3];
 		double pos_joint_x, pos_joint_y, pos_joint_z;//joint angle(JA)
 		double vel_joint_x, vel_joint_y, vel_joint_z;//joint angular velocity(JAV)
 
-		if (pMech->var.moveType == ROCKS_MOVE_TYPE_CIRCULAR)//check the path type
-		{
-			double s = 2 * M_PI * pMech->var.radius; //circumference
-			double angle = pMech->var.pPositionSplineBuffer[index] / pMech->var.radius;
+		DeltaPath2WorldCoordinate(pMech, index, pos, vel);
 
-			//convert PTCP to WTCP
-			pos_x = pMech->var.startPos[0] + pMech->var.radius + pMech->var.radius * cos(M_PI - angle);
-			pos_y = pMech->var.startPos[1] + pMech->var.radius * sin(M_PI - angle) * sin(M_PI / 2 + pMech->var.refFramePose2.r.x);
-			pos_z = pMech->var.startPos[2] + pMech->var.radius * sin(M_PI - angle) * cos(M_PI / 2 + pMech->var.refFramePose2.r.x);
-
-			//convert PTCV to WTCV
-			vel_x =	pMech->var.pVelocitySplineBuffer[index] * sin(angle);
-			vel_y =	pMech->var.pVelocitySplineBuffer[index] * cos(angle) * sin(M_PI / 2 + pMech->var.refFramePose2.r.x);
-			vel_z = pMech->var.pVelocitySplineBuffer[index] * cos(angle) * cos(M_PI / 2 + pMech->var.refFramePose2.r.x);
-		} 
-		delta_calcInverse(pos_x, pos_y, pos_z, pos_joint_x, pos_joint_y, pos_joint_z);
+		delta_calcInverse(pos[0], pos[1], pos[2], pos_joint_x, pos_joint_y, pos_joint_z);
 
 		//convert the JA to joint position(JP)
 		pMech->var.pJointPositionBufferC[0][index] = pos_joint_x * rate_angle2pu[0];
 		pMech->var.pJointPositionBufferC[1][index] = pos_joint_y * rate_angle2pu[1];
 		pMech->var.pJointPositionBufferC[2][index] = pos_joint_z * rate_angle2pu[2];
 
-		delta_velInverse(pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, pos_joint_x, pos_joint_y, pos_joint_z, vel_joint_x, vel_joint_y, vel_joint_z);
+		delta_velInverse(pos[0], pos[1], pos[2], vel[0], vel[1], vel[2], pos_joint_x, pos_joint_y, pos_joint_z, vel_joint_x, vel_joint_y, vel_joint_z);
 
 		//convert the JAV to joint velocity(JV)
 		pMech->var.pJointVelocityBufferC[0][index] = vel_joint_x * rate_angle2pu[0];
@@ -362,9 +431,9 @@ BOOL Rocks(void)
 	// -----------------
 	sineAccPars.maxVelocity = 10000;
 	sineAccPars.maxAcceleration = 100000;
-	sineAccPars.splineTime = 0.0002;
+	sineAccPars.splineTime = 0.001;
 	sineAccPars.center[ 0 ] = 150.0;
-	sineAccPars.center[ 1 ] = 0.0;
+	sineAccPars.center[ 1 ] = 0;
 	sineAccPars.angle = M_PI * 8;
 	sineAccPars.plane = ROCKS_PLANE_XY;
 	sineAccPars.maxNrOfSplines =  0;
@@ -386,7 +455,7 @@ BOOL Rocks(void)
 		kinPars.pJointVelocityBuffer[ ax ] = NULL;
 	}
 
-	rocksPose.r.x = M_PI_4;
+	rocksPose.r.x = 0;
 	rocksPose.r.y = 0;
 	rocksPose.r.z = 0;
 	rocksPose.t.x = 0;
