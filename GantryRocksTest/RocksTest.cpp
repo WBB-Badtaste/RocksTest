@@ -442,8 +442,8 @@ BOOL Rocks(void)
 	// -----------------
 	sineAccPars.maxVelocity = 10000;
 	sineAccPars.maxAcceleration = 100000;
-	sineAccPars.splineTime = 0.000125;
-	sineAccPars.center[ 0 ] = 150.0;
+	sineAccPars.splineTime = 0.001;
+	sineAccPars.center[ 0 ] = 150;
 	sineAccPars.center[ 1 ] = 0;
 	sineAccPars.angle = M_PI * 8;
 	sineAccPars.plane = ROCKS_PLANE_XY;
@@ -466,7 +466,7 @@ BOOL Rocks(void)
 		kinPars.pJointVelocityBuffer[ ax ] = NULL;
 	}
 
-	rocksPose.r.x = 0;
+	rocksPose.r.x = M_PI_4;
 	rocksPose.r.y = 0;
 	rocksPose.r.z = 0;
 	rocksPose.t.x = 0;
