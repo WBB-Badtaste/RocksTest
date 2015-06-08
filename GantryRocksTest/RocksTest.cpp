@@ -216,21 +216,59 @@ NYCE_STATUS RocksKinDeltaPosition(struct rocks_mech* pMech, double pPos[])
 	return nyceStatus;
 }
 
+void Roll(double *pVector, double angle)
+{
+	double buf = pVector[1] * cos(angle) - pVector[2] * sin(angle);
+	pVector[2] = pVector[1] * sin(angle) + pVector[2] * cos(angle);
+	pVector[1] = buf;
+}
+
+void Pitch(double *pVector, double angle)
+{
+	double buf =  pVector[0] * cos(angle) + pVector[2] * sin(angle);
+	pVector[2] = -pVector[0] * sin(angle) + pVector[2] * cos(angle);
+	pVector[0] = buf;
+}
+
+void Yaw(double *pVector, double angle)
+{
+	double buf = pVector[0] * cos(angle) - pVector[1] * sin(angle);
+	pVector[1] = pVector[0] * sin(angle) + pVector[1] * cos(angle);
+	pVector[0] = buf;
+}
+
 void DeltaPath2WorldCoordinate(ROCKS_MECH* pMech, uint32_t index, double *pPosition, double *pVelocity)
 {
 	if (pMech->var.moveType == ROCKS_MOVE_TYPE_CIRCULAR)//check the path type
 	{
-		double beta = pMech->var.center[1] < 0 ? 
-			acos(-pMech->var.center[0] / sqrt(pMech->var.center[0] * pMech->var.center[0] + pMech->var.center[1] * pMech->var.center[1])) : 
-		M_PI * 2 - acos(-pMech->var.center[0] / sqrt(pMech->var.center[0] * pMech->var.center[0] + pMech->var.center[1] * pMech->var.center[1]));
-		double angle = beta - pMech->var.pPositionSplineBuffer[index] / pMech->var.radius;
+// 		double alhpa = acos(-pMech->var.center[0] / sqrt(pMech->var.center[0] * pMech->var.center[0] + pMech->var.center[1] * pMech->var.center[1]));
+// 		double beta = pMech->var.center[1] < 0 ? alhpa : M_PI * 2 - alhpa;
+// 		double angle;
+// 		if (pMech->var.angle > 0)
+// 			angle = beta - pMech->var.pPositionSplineBuffer[index] / pMech->var.radius;
+// 		else
+// 			angle = beta + pMech->var.pPositionSplineBuffer[index] / pMech->var.radius;
 
+		double angle;
+		double alhpa;
+		double beta ;
 		double CenterWorldCoordinate[3];
 		switch(pMech->var.plane)
 		{
 		case ROCKS_PLANE_XY:
-			CenterWorldCoordinate[0] = pMech->var.startPos[0] + pMech->var.center[0];
-			CenterWorldCoordinate[1] = pMech->var.startPos[1] + pMech->var.center[1];
+// 			CenterWorldCoordinate[0] = pMech->var.startPos[0] + pMech->var.center[0];
+// 			CenterWorldCoordinate[1] = pMech->var.startPos[1] + pMech->var.center[1];
+// 			CenterWorldCoordinate[2] = pMech->var.startPos[2];
+
+			alhpa = acos((pMech->var.startPos[0] - pMech->var.center[0]) / sqrt((pMech->var.startPos[0] - pMech->var.center[0]) * (pMech->var.startPos[0] - pMech->var.center[0]) + (pMech->var.startPos[1] - pMech->var.center[1]) * (pMech->var.startPos[1] - pMech->var.center[1])));
+			beta = pMech->var.center[1] < 0 ? alhpa : M_PI * 2 - alhpa;
+			if (pMech->var.angle > 0)
+				angle = beta - pMech->var.pPositionSplineBuffer[index] / pMech->var.radius;
+			else
+				angle = beta + pMech->var.pPositionSplineBuffer[index] / pMech->var.radius;
+
+			CenterWorldCoordinate[0] = pMech->var.center[0];
+			CenterWorldCoordinate[1] = pMech->var.center[1];
 			CenterWorldCoordinate[2] = pMech->var.startPos[2];
 
 			pPosition[0] = CenterWorldCoordinate[0] + pMech->var.radius * cos(angle);
@@ -251,9 +289,20 @@ void DeltaPath2WorldCoordinate(ROCKS_MECH* pMech, uint32_t index, double *pPosit
 			}
 			break;
 		case ROCKS_PLANE_YZ:
+// 			CenterWorldCoordinate[0] = pMech->var.startPos[0];
+// 			CenterWorldCoordinate[1] = pMech->var.startPos[1] + pMech->var.center[0];
+// 			CenterWorldCoordinate[2] = pMech->var.startPos[2] + pMech->var.center[1];
+
+			alhpa = acos((pMech->var.startPos[1] - pMech->var.center[0]) / sqrt((pMech->var.startPos[1] - pMech->var.center[0]) * (pMech->var.startPos[1] - pMech->var.center[0]) + (pMech->var.startPos[2] - pMech->var.center[1]) * (pMech->var.startPos[2] - pMech->var.center[1])));
+			beta = pMech->var.center[1] < 0 ? alhpa : M_PI * 2 - alhpa;
+			if (pMech->var.angle > 0)
+				angle = beta - pMech->var.pPositionSplineBuffer[index] / pMech->var.radius;
+			else
+				angle = beta + pMech->var.pPositionSplineBuffer[index] / pMech->var.radius;
+
 			CenterWorldCoordinate[0] = pMech->var.startPos[0];
-			CenterWorldCoordinate[1] = pMech->var.startPos[1] + pMech->var.center[0];
-			CenterWorldCoordinate[2] = pMech->var.startPos[2] + pMech->var.center[1];
+			CenterWorldCoordinate[1] = pMech->var.center[0];
+			CenterWorldCoordinate[2] = pMech->var.center[1];
 
 			pPosition[0] = CenterWorldCoordinate[0];
 			pPosition[1] = CenterWorldCoordinate[1] + pMech->var.radius * cos(angle);
@@ -261,21 +310,32 @@ void DeltaPath2WorldCoordinate(ROCKS_MECH* pMech, uint32_t index, double *pPosit
 
 			if (pMech->var.angle > 0)
 			{
-				pVelocity[0] = 0;
-				pVelocity[1] = pMech->var.pVelocitySplineBuffer[index] * sin(angle);
+				pVelocity[0] =  0;
+				pVelocity[1] =  pMech->var.pVelocitySplineBuffer[index] * sin(angle);
 				pVelocity[2] = -pMech->var.pVelocitySplineBuffer[index] * cos(angle);
 			}
 			else
 			{
-				pVelocity[0] = 0;
+				pVelocity[0] =  0;
 				pVelocity[1] = -pMech->var.pVelocitySplineBuffer[index] * sin(angle);
-				pVelocity[2] = pMech->var.pVelocitySplineBuffer[index] * cos(angle);
-			}
+				pVelocity[2] =  pMech->var.pVelocitySplineBuffer[index] * cos(angle);
+			} 
 			break;
 		case ROCKS_PLANE_ZX:
-			CenterWorldCoordinate[0] = pMech->var.startPos[0] + pMech->var.center[1];
+// 			CenterWorldCoordinate[0] = pMech->var.startPos[0] + pMech->var.center[1];
+// 			CenterWorldCoordinate[1] = pMech->var.startPos[1];
+// 			CenterWorldCoordinate[2] = pMech->var.startPos[2] + pMech->var.center[0];
+
+			alhpa = acos((pMech->var.startPos[2] - pMech->var.center[0]) / sqrt((pMech->var.startPos[2] - pMech->var.center[0]) * (pMech->var.startPos[2] - pMech->var.center[0]) + (pMech->var.startPos[0] - pMech->var.center[1]) * (pMech->var.startPos[0] - pMech->var.center[1])));
+			beta = pMech->var.center[1] < 0 ? alhpa : M_PI * 2 - alhpa;
+			if (pMech->var.angle > 0)
+				angle = beta - pMech->var.pPositionSplineBuffer[index] / pMech->var.radius;
+			else
+				angle = beta + pMech->var.pPositionSplineBuffer[index] / pMech->var.radius;
+
+			CenterWorldCoordinate[0] = pMech->var.center[1];
 			CenterWorldCoordinate[1] = pMech->var.startPos[1];
-			CenterWorldCoordinate[2] = pMech->var.startPos[2] + pMech->var.center[0];
+			CenterWorldCoordinate[2] = pMech->var.center[0];
 
 			pPosition[0] = CenterWorldCoordinate[0] + pMech->var.radius * sin(angle);
 			pPosition[1] = CenterWorldCoordinate[1];
@@ -284,17 +344,40 @@ void DeltaPath2WorldCoordinate(ROCKS_MECH* pMech, uint32_t index, double *pPosit
 			if (pMech->var.angle > 0)
 			{
 				pVelocity[0] = -pMech->var.pVelocitySplineBuffer[index] * cos(angle);
-				pVelocity[1] = 0;
-				pVelocity[2] = pMech->var.pVelocitySplineBuffer[index] * sin(angle);
+				pVelocity[1] =  0;
+				pVelocity[2] =  pMech->var.pVelocitySplineBuffer[index] * sin(angle);
 			}
 			else
 			{
-				pVelocity[0] = pMech->var.pVelocitySplineBuffer[index] * cos(angle);
+				pVelocity[0] =  pMech->var.pVelocitySplineBuffer[index] * cos(angle);
 				pVelocity[1] = 0;
 				pVelocity[2] = -pMech->var.pVelocitySplineBuffer[index] * sin(angle);
 			}
 			break;
 		}
+
+		if (pMech->var.refFramePose2.r.x)
+		{
+			Roll(pPosition, pMech->var.refFramePose2.r.x);
+			Roll(pVelocity, pMech->var.refFramePose2.r.x);
+		}
+
+		if (pMech->var.refFramePose2.r.y)
+		{
+			Pitch(pPosition, pMech->var.refFramePose2.r.y);
+			Pitch(pVelocity, pMech->var.refFramePose2.r.y);
+		}
+
+		if (pMech->var.refFramePose2.r.z)
+		{
+			Yaw(pPosition, pMech->var.refFramePose2.r.z);
+			Yaw(pVelocity, pMech->var.refFramePose2.r.z);
+		}
+
+		pPosition[0] += pMech->var.refFramePose2.t.x;
+		pPosition[1] += pMech->var.refFramePose2.t.y;
+		pPosition[2] += pMech->var.refFramePose2.t.z;
+
 	} 
 } 
 
@@ -385,6 +468,8 @@ unsigned __stdcall ThreadRocksLoop(void* lpParam)
 			file<<"|"<<i<<"|"<<m_mech.var.pPositionSplineBuffer[i]<<"|"<<m_mech.var.pVelocitySplineBuffer[i]<<"|"<<m_mech.var.pJointPositionBufferC[0][i]<<"|"<<m_mech.var.pJointVelocityBufferC[0][i]<<"|"<<m_mech.var.pJointPositionBufferC[1][i]<<"|"<<m_mech.var.pJointVelocityBufferC[1][i]<<"|"<<m_mech.var.pJointPositionBufferC[2][i]<<"|"<<m_mech.var.pJointVelocityBufferC[2][i]<<endl;
 		}
 
+		
+
 		// Feed splines to the joints
 		// --------------------------
 		times++;
@@ -437,23 +522,23 @@ BOOL Rocks(void)
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksMechCreate( &m_mech );
 
 	//nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinDefineGantry( &m_mech, ROCKS_GANTRY_Y );
+	
+	// Get current position
+	// --------------------
+	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinDeltaPosition(&m_mech, sineAccPars.startPos);
 
 	// Define the circle
 	// -----------------
 	sineAccPars.maxVelocity = 10000;
 	sineAccPars.maxAcceleration = 100000;
-	sineAccPars.splineTime = 0.001;
-	sineAccPars.center[ 0 ] = 150;
-	sineAccPars.center[ 1 ] = 0;
+	sineAccPars.splineTime = 0.0002;
+	sineAccPars.center[ 0 ] = sineAccPars.startPos[0] + 150;
+	sineAccPars.center[ 1 ] = sineAccPars.startPos[1];
 	sineAccPars.angle = M_PI * 8;
 	sineAccPars.plane = ROCKS_PLANE_XY;
 	sineAccPars.maxNrOfSplines = 0;
 	sineAccPars.pPositionSplineBuffer = NULL;
 	sineAccPars.pVelocitySplineBuffer = NULL;
-	
-	// Get current position
-	// --------------------
-	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinDeltaPosition(&m_mech, sineAccPars.startPos);
 
 	// Get path splinesc
 	// ----------------
@@ -466,13 +551,13 @@ BOOL Rocks(void)
 		kinPars.pJointVelocityBuffer[ ax ] = NULL;
 	}
 
-	rocksPose.r.x = M_PI_4;
-	rocksPose.r.y = 0;
-	rocksPose.r.z = 0;
-	rocksPose.t.x = 0;
-	rocksPose.t.y = 0;
-	rocksPose.t.z = 0;
-	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinMoveOrigin(&m_mech, &rocksPose);
+// 	rocksPose.r.x = M_PI_4 / 2;
+// 	rocksPose.r.y = 0;
+// 	rocksPose.r.z = 0;
+// 	rocksPose.t.x = 0;
+// 	rocksPose.t.y = sineAccPars.startPos[1] - (sineAccPars.startPos[1] * cos(M_PI_4 / 2) - sineAccPars.startPos[2] * sin(M_PI_4 / 2));
+// 	rocksPose.t.z = sineAccPars.startPos[2] - (sineAccPars.startPos[1] * sin(M_PI_4 / 2) + sineAccPars.startPos[2] * cos(M_PI_4 / 2));
+// 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinMoveOrigin(&m_mech, &rocksPose);
 
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajGetPath( &m_mech, &rocksTrajPath);
 
