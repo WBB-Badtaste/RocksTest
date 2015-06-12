@@ -26,6 +26,8 @@ using namespace std;
 #define USE_AXIS
 #define SIM_METHOD
 
+const double rate_angle2pu = 0.5 / M_PI * 10000;
+
 NYCE_STATUS nyceStatus;
 HANDLE hEvStop;
 
@@ -190,30 +192,32 @@ HANDLE hThreadRocks;
 NYCE_STATUS RocksKinForwardDelta(struct rocks_mech* pMech, const double pJointPos[], double pMechPos[])
 {
 	ZeroMemory(pMechPos, sizeof(double) * ROCKS_MECH_MAX_DOF);
-	double rate_angle2pu[ROCKS_MECH_MAX_NR_OF_JOINTS];
-	for (uint32_t ax = 0; ax < pMech->nrOfJoints; ++ax)//只在当前情况下有效
-	{
-		rate_angle2pu[ax] = 0.5 / M_PI;
-	}
-	delta_calcForward(pJointPos[0] / rate_angle2pu[0], pJointPos[1] / rate_angle2pu[1], pJointPos[2] / rate_angle2pu[2], pMechPos[0], pMechPos[1], pMechPos[2]);
+
+	if(delta_calcForward(pJointPos[0] / rate_angle2pu, pJointPos[1] / rate_angle2pu, pJointPos[2] / rate_angle2pu, pMechPos[0], pMechPos[1], pMechPos[2]))
+		return -1;
 	return NYCE_OK; 
 }
 
 NYCE_STATUS RocksKinDeltaPosition(struct rocks_mech* pMech, double pPos[])
 {
-	double *pJointPos = new double[ROCKS_MECH_MAX_DOF];
-	NYCE_STATUS nyceStatus = NYCE_OK;
+	double pJointPos[ROCKS_MECH_MAX_DOF];
+	NYCE_STATUS status = NYCE_OK;
 	for (uint32_t ax = 0; ax < pMech->nrOfJoints; ax++)
 	{
-		nyceStatus = NyceError(nyceStatus) ? nyceStatus : SacReadVariable(axId[ax], SAC_VAR_SETPOINT_POS, &pJointPos[ax]);
+		status = NyceError(status) ? status : SacReadVariable(axId[ax], SAC_VAR_SETPOINT_POS, &pJointPos[ax]);
 	}
-	nyceStatus = NyceError(nyceStatus) ? nyceStatus : RocksKinForwardDelta(pMech, pJointPos, pPos);	
+	status = NyceError(status) ? status : RocksKinForwardDelta(pMech, pJointPos, pPos);	
 
 // 	pPos[0] = (double)(int)(pPos[0] * 100000) / 100000;
 // 	pPos[1] = (double)(int)(pPos[1] * 100000) / 100000;
 // 	pPos[2] = (double)(int)(pPos[2] * 100000) / 100000;
 
-	return nyceStatus;
+	if (NyceError(status))
+	{
+		HandleError(status, "RocksKinDeltaPosition");
+		return -1;
+	}
+	return status;
 }
 
 void Roll(double *pVector, double angle)
@@ -385,18 +389,18 @@ void DeltaPath2WorldCoordinate(ROCKS_MECH* pMech, uint32_t index, double *pPosit
 
 NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pKin)
 {
-	double rate_angle2pu[ROCKS_MECH_MAX_NR_OF_JOINTS];
 	uint32_t ax = 0;
 	while (!pMech->var.jointBuffersAllocated)
 	{
- 		pMech->var.pJointPositionBufferC[ax] = (double*)malloc(sizeof(double) * pMech->var.maxNrOfSplines);
- 		pMech->var.pJointVelocityBufferC[ax] = (double*)malloc(sizeof(double) * pMech->var.maxNrOfSplines);
-		if(++ax == pMech->nrOfJoints) pMech->var.jointBuffersAllocated = TRUE;
-	}
-
-	for (ax = 0; ax < pMech->nrOfJoints; ++ax)//只在当前情况下有效
-	{
-		rate_angle2pu[ax] = 0.5 / M_PI;
+		pMech->var.pJointPositionBufferC[ax] = (double*)malloc(sizeof(double) * pMech->var.maxNrOfSplines);
+		pMech->var.pJointVelocityBufferC[ax] = (double*)malloc(sizeof(double) * pMech->var.maxNrOfSplines);
+		if(++ax == pMech->nrOfJoints) 
+		{
+			pMech->var.jointBuffersAllocated = TRUE;
+			pMech->var.pApplyForwardKinFunc = RocksKinForwardDelta;
+			pMech->var.pApplyInverseKinFunc = RocksKinInverseDelta;
+			pMech->var.pGetWorldSetpointPosFunc = RocksKinDeltaPosition;
+		}
 	}
 
 	for (uint32_t index = 0; index < pMech->var.usedNrOfSplines; ++index)
@@ -421,16 +425,16 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 		delta_calcInverse(pos[0], pos[1], pos[2], pos_joint_x, pos_joint_y, pos_joint_z);
 
 		//convert the JA to joint position(JP)
-		pMech->var.pJointPositionBufferC[0][index] = pos_joint_x * rate_angle2pu[0];
-		pMech->var.pJointPositionBufferC[1][index] = pos_joint_y * rate_angle2pu[1];
-		pMech->var.pJointPositionBufferC[2][index] = pos_joint_z * rate_angle2pu[2];
+		pMech->var.pJointPositionBufferC[0][index] = pos_joint_x * rate_angle2pu;
+		pMech->var.pJointPositionBufferC[1][index] = pos_joint_y * rate_angle2pu;
+		pMech->var.pJointPositionBufferC[2][index] = pos_joint_z * rate_angle2pu;
 
 		delta_velInverse(pos[0], pos[1], pos[2], vel[0], vel[1], vel[2], pos_joint_x, pos_joint_y, pos_joint_z, vel_joint_x, vel_joint_y, vel_joint_z);
 
 		//convert the JAV to joint velocity(JV)
-		pMech->var.pJointVelocityBufferC[0][index] = vel_joint_x * rate_angle2pu[0];
-		pMech->var.pJointVelocityBufferC[1][index] = vel_joint_y * rate_angle2pu[1];
-		pMech->var.pJointVelocityBufferC[2][index] = vel_joint_z * rate_angle2pu[2];
+		pMech->var.pJointVelocityBufferC[0][index] = vel_joint_x * rate_angle2pu;
+		pMech->var.pJointVelocityBufferC[1][index] = vel_joint_y * rate_angle2pu;
+		pMech->var.pJointVelocityBufferC[2][index] = vel_joint_z * rate_angle2pu;
 
 // 		if (index == 0 || index == pMech->var.usedNrOfSplines - 1)
 // 		{
@@ -444,9 +448,6 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 // 		}
 	}
 	pMech->var.mechStep = ROCKS_MECH_STEP_VALID_INV_KINEMATICS;
-	pMech->var.pApplyForwardKinFunc = RocksKinForwardDelta;
-	pMech->var.pApplyInverseKinFunc = RocksKinInverseDelta;
-	pMech->var.pGetWorldSetpointPosFunc = RocksKinDeltaPosition;
 	return NYCE_OK;
 }
 
@@ -461,6 +462,7 @@ unsigned __stdcall ThreadRocksLoop(void* lpParam)
 		Status = NyceError( Status ) ? Status : RocksTrajLoadPath(&m_mech, &rocksTrajPath);
 
 		Status = NyceError( Status ) ? Status : RocksKinInverseDelta( &m_mech, &kinPars );
+		//Status = NyceError( Status ) ? Status : RocksKinInverseCartesian( &m_mech, &kinPars );
 
 		ofstream file("..//SplineDatas.txt");	
 		file<<m_mech.var.startPos[0]<< " "<<m_mech.var.startPos[1]<<" "<<m_mech.var.startPos[2]<<endl;
@@ -491,6 +493,46 @@ unsigned __stdcall ThreadRocksLoop(void* lpParam)
 	}	
 
 	Status = NyceError( Status ) ? Status : RocksTrajDeletePath( &m_mech, &rocksTrajPath);
+
+// 	if (m_mech.var.pathBuffersAllocated)
+// 	{
+// 		if (m_mech.var.pPositionSplineBuffer != NULL)
+// 		{
+// 			free(m_mech.var.pPositionSplineBuffer);
+// 			m_mech.var.pPositionSplineBuffer = NULL;
+// 		}
+// 		if (m_mech.var.pVelocitySplineBuffer != NULL)
+// 		{
+// 			free(m_mech.var.pVelocitySplineBuffer);
+// 			m_mech.var.pVelocitySplineBuffer = NULL;
+// 		}
+// 		if (m_mech.var.pTimeSplineBuffer != NULL)
+// 		{
+// 			free(m_mech.var.pTimeSplineBuffer);
+// 			m_mech.var.pTimeSplineBuffer = NULL;
+// 		}
+// 	
+// 		m_mech.var.pathBuffersAllocated = FALSE;
+// 	}
+	
+	if (m_mech.var.jointBuffersAllocated)
+	{
+		int i;
+		for (i = 0; i < ROCKS_MECH_MAX_NR_OF_JOINTS; i++)
+		{
+			if (m_mech.var.pJointPositionBufferC[i] != NULL)
+			{
+				free(m_mech.var.pJointPositionBufferC[i]);
+				m_mech.var.pJointPositionBufferC[i] = NULL;
+			}
+			if (m_mech.var.pJointVelocityBufferC[i] != NULL)
+			{
+				free(m_mech.var.pJointVelocityBufferC[i]);
+				m_mech.var.pJointVelocityBufferC[i] = NULL;
+			}
+		}
+		/*m_mech.var.jointBuffersAllocated = FALSE;*/
+	}
 
 	// Delete mechanism
 	// ----------------
@@ -527,12 +569,13 @@ BOOL Rocks(void)
 	// Get current position
 	// --------------------
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinDeltaPosition(&m_mech, sineAccPars.startPos);
+	//nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinCartesianPosition(&m_mech, sineAccPars.startPos);
 
 	// Define the circle
 	// -----------------
 	sineAccPars.maxVelocity = 10000;
 	sineAccPars.maxAcceleration = 100000;
-	sineAccPars.splineTime = 0.0002;
+	sineAccPars.splineTime = 0.001;
 	sineAccPars.center[ 0 ] = sineAccPars.startPos[0] + 150;
 	sineAccPars.center[ 1 ] = sineAccPars.startPos[1];
 	sineAccPars.angle = M_PI * 8;
@@ -552,7 +595,7 @@ BOOL Rocks(void)
 		kinPars.pJointVelocityBuffer[ ax ] = NULL;
 	}
 
-	rocksPose.r.x = M_PI * M_PI_2;
+	rocksPose.r.x = M_PI_4;
 	rocksPose.r.y = 0;
 	rocksPose.r.z = 0;
 
@@ -734,7 +777,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 	}
 
-stop:
+stop: 
 	CloseHandle(hEvStop);
 
 	bRocksTerm = TRUE;
