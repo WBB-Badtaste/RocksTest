@@ -13,6 +13,18 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\Drawer">
+      <UniqueIdentifier>{d98a27cf-092a-4c75-97ce-db75470f2645}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Drawer\Opengl">
+      <UniqueIdentifier>{d2e42192-bef4-4786-8d1e-d0ec46f3d039}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Drawer">
+      <UniqueIdentifier>{c279a3cd-b091-4837-8945-0d5a0dcb8522}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Drawer\Opengl">
+      <UniqueIdentifier>{b5a09c6c-142d-4669-b11e-42d1dd5c9e79}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="ReadMe.txt" />
@@ -24,6 +36,15 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Camera.h">
+      <Filter>Header Files\Drawer\Opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="Painter.h">
+      <Filter>Header Files\Drawer\Opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="Drawer.h">
+      <Filter>Header Files\Drawer</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -31,6 +52,15 @@
     </ClCompile>
     <ClCompile Include="RocksTest.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Painter.cpp">
+      <Filter>Source Files\Drawer\Opengl</Filter>
+    </ClCompile>
+    <ClCompile Include="Camera.cpp">
+      <Filter>Source Files\Drawer\Opengl</Filter>
+    </ClCompile>
+    <ClCompile Include="Drawer.cpp">
+      <Filter>Source Files\Drawer</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

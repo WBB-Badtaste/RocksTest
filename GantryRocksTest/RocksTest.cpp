@@ -3,11 +3,13 @@
 
 #include "stdafx.h"
 
+
 #include <Windows.h>
 #include <iostream>
 #include <iomanip>
 #include <string>
 #include <process.h>
+#include <fstream>
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -18,10 +20,10 @@
 #include <rocksapi.h>
 
 #include "DeltaRobot.h"
+#include "Drawer.h"
 
 using namespace std;
 
-//#define DRAW_TCP
 //#define USE_NODE
 #define USE_AXIS
 #define SIM_METHOD
@@ -34,6 +36,8 @@ HANDLE hEvStop;
 LONG64 times = 0;
 LONG64 timesCounter = 0;
 
+double coordinate[6] = {0, 200, -535, -335, -100, 100};
+double target[3] = {(coordinate[1] + coordinate[0]) / 2, (coordinate[3] + coordinate[2]) / 2, (coordinate[5] + coordinate[4]) / 2};
 
 void HandleError(const char *name)
 {
@@ -451,8 +455,6 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 	return NYCE_OK;
 }
 
-#include <fstream>
-
 unsigned __stdcall ThreadRocksLoop(void* lpParam)
 {
 	NYCE_STATUS Status = NYCE_OK;
@@ -666,141 +668,145 @@ void OnInterpolantEvent( NYCE_ID nyceId, NYCE_EVENT eventId, NYCE_EVENT_DATA *pE
 	}
 }
 
-int _tmain(int argc, _TCHAR* argv[])
-{
-	nyceStatus = NYCE_OK;	
-	uint32_t varIndex = 0;
-	unsigned uThreadRocks = 0;
+int programState = 0;
+uint32_t varIndex = 0;
+unsigned uThreadRocks = 0;
 
-	
-	printf("Begin...\n");
-#ifdef SIM_METHOD
-	nyceStatus = NyceInit(NYCE_SIM);
-#else
-	nyceStatus = NyceInit(NYCE_NET);
-#endif // SIM_METHOD
-	
-	if (NyceError(nyceStatus))
+void StateHandle()
+{
+	switch(programState)
 	{
-		HandleError("System");
-		goto end;
-	}
+	case 0:
+		nyceStatus = NYCE_OK;	
+		printf("Begin...\n");
+#ifdef SIM_METHOD
+		nyceStatus = NyceInit(NYCE_SIM);
+#else
+		nyceStatus = NyceInit(NYCE_NET);
+#endif // SIM_METHOD
+
+		if (NyceError(nyceStatus))
+		{
+			HandleError("System");
+			
+			programState = 4;
+			break;
+			
+		}
 
 #ifdef USE_NODE
-	if (!InitNode()) goto end;
-#endif // USE_NODE
-#ifdef USE_AXIS
-	if (!InitAxis()) goto end;
-#endif // USE_AXIS
-	
-
-#ifdef NT
-	Sleep(500);//Some trouble will be happened without this code while using the simulation system.
-			   //--For example, the error "spline buffer empty" occur.
-#endif // NT
-
-#ifdef DRAW_TCP
-
-	nyceStatus = NyceError(nyceStatus) ? nyceStatus : SacDefineEventEnrolment(axId[0], SAC_EV_INTERPOLANT_STARTED, OnInterpolantEvent, (void * )&file);
-	if (NyceError(nyceStatus)) goto end;
-	for (int ax = 0; ax <NUM_AXES; ++ax)
-	{
-		nyceStatus = SacAddVariableToSet(axId[ax], SAC_VAR_AXIS_POS, &varIndex);
-		if (NyceError(nyceStatus))
+		if (!InitNode())
 		{
-			HandleError(axName[ax]);
-			goto term;
-		}
-		varIndexs[ax] = varIndex;
-	}
-
-// 	for (int ax = 0; ax <NUM_AXES; ++ax)
-// 	{
-// 		nyceStatus = SacAddVariableToSet(axId[ax], SAC_VAR_AXIS_VEL, &varIndex);
-// 		if (NyceError(nyceStatus))
-// 		{
-// 			HandleError(axName[ax]);
-// 			goto term;
-// 		}
-// 		varIndexs[ax + 3] = varIndex;
-// 	}
-
-#endif 
-
-	for (int ax = 0; ax <NUM_AXES; ++ax)
-	{
-		nyceStatus = SacAddVariableToSet(axId[ax], SAC_VAR_SETPOINT_POS, &posVarIndex[ax]);
-		if (NyceError(nyceStatus))
-		{
-			HandleError(axName[ax]);
-			goto term;
-		}
-	}
-
-	if (!Rocks()) goto term;
-
-	hThreadRocks = (HANDLE)_beginthreadex(NULL, NULL, ThreadRocksLoop, NULL, 0,&uThreadRocks);
-
-	hEvStop = CreateEvent(NULL,TRUE,FALSE,NULL);
-	Sleep(10);
-	HANDLE h[2];//no need to close there two HANDLE.
-	h[0] = hEvStop;
-	h[1] = GetStdHandle(STD_INPUT_HANDLE);
-	cout<<"Please inter 'Q' to terminal.\n"<<endl;
-	while(true)
-	{
-		switch(WaitForMultipleObjects(2, h, FALSE, INFINITE))
-		{
-		case WAIT_OBJECT_0:
-			goto stop;
-		case WAIT_OBJECT_0 + 1:
-			processConsoleCommand(h[1]); 
-		default:
+			programState = 4;
 			break;
 		}
-	}
-
-stop: 
-	CloseHandle(hEvStop);
-
-	bRocksTerm = TRUE;
-	cout<<"Wait for Rocks stop...\n"<<endl;
-	WaitForSingleObject(hThreadRocks, INFINITE);
-	CloseHandle(hThreadRocks);
-	
-term:
-	for (int ax = 0; posVarIndex[ax] >0; ax++)
-	{
-		nyceStatus = SacDeleteVariableFromSet(posVarIndex[ax]);
-		if (NyceError(nyceStatus))
-		{
-			HandleError(axName[ax]);
-			goto term;
-		}
-	}
-
-#ifdef DRAW_TCP
-	for (int ax = 0; ax < NUM_AXES; ++ax)
-	{
-		nyceStatus = NyceError(nyceStatus) ? nyceStatus : SacDeleteEventEnrolment(axId[ax], SAC_EV_INTERPOLANT_STARTED, OnInterpolantEvent, NULL);
-	}
-#endif // DRAW_TCP
-	
-end:
-#ifdef USE_NODE
-	TermNode();
 #endif // USE_NODE
 #ifdef USE_AXIS
-	TermAxis();
+		if (!InitAxis())
+		{
+			programState = 4;
+			break;
+		}
 #endif // USE_AXIS
-	
-	nyceStatus = NyceError(nyceStatus) ? nyceStatus : NyceTerm();
-	if (NyceError(nyceStatus))
-	{
-		HandleError("Host");
-	}
-	printf("End.\n");
 
-	system("pause");
-	return 0;
+
+#ifdef NT
+		Sleep(500);//Some trouble will be happened without this code while using the simulation system.
+		//--For example, the error "spline buffer empty" occur.
+#endif // NT
+
+		nyceStatus = NyceError(nyceStatus) ? nyceStatus : SacDefineEventEnrolment(axId[0], SAC_EV_INTERPOLANT_STARTED, OnInterpolantEvent, NULL);
+		if (NyceError(nyceStatus)) 
+		{
+			programState = 4;
+			break;
+		}
+
+		for (int ax = 0; ax <NUM_AXES; ++ax)
+		{
+			nyceStatus = SacAddVariableToSet(axId[ax], SAC_VAR_SETPOINT_POS, &posVarIndex[ax]);
+			if (NyceError(nyceStatus))
+			{
+				HandleError(axName[ax]);
+				programState = 3;
+				break;
+			}
+		}
+
+		if (!Rocks()) 
+		{
+			programState = 3;
+			break;
+		}
+
+		hThreadRocks = (HANDLE)_beginthreadex(NULL, NULL, ThreadRocksLoop, NULL, 0,&uThreadRocks);
+
+		hEvStop = CreateEvent(NULL,TRUE,FALSE,NULL);
+		Sleep(10);
+
+		programState = 1;
+		break; //case 0
+	case 1:
+		break;
+	case 2:
+		CloseHandle(hEvStop);
+
+		bRocksTerm = TRUE;
+		cout<<"Wait for Rocks stop...\n"<<endl;
+		WaitForSingleObject(hThreadRocks, INFINITE);
+		CloseHandle(hThreadRocks);
+	case 3:
+		for (int ax = 0; posVarIndex[ax] >0; ax++)
+		{
+			nyceStatus = SacDeleteVariableFromSet(posVarIndex[ax]);
+			if (NyceError(nyceStatus))
+			{
+				HandleError(axName[ax]);
+			}
+		}
+
+		nyceStatus = NyceError(nyceStatus) ? nyceStatus : SacDeleteEventEnrolment(axId[0], SAC_EV_INTERPOLANT_STARTED, OnInterpolantEvent, NULL);
+	case 4:
+#ifdef USE_NODE
+		TermNode();
+#endif // USE_NODE
+#ifdef USE_AXIS
+		TermAxis();
+#endif // USE_AXIS
+
+		nyceStatus = NyceError(nyceStatus) ? nyceStatus : NyceTerm();
+		if (NyceError(nyceStatus))
+		{
+			HandleError("Host");
+		}
+		printf("End.\n");
+		break; //case 4
+	default:
+		break;
+	}
+	
+
+// 	HANDLE h[2];//no need to close there two HANDLE.
+// 	h[0] = hEvStop;
+// 	h[1] = GetStdHandle(STD_INPUT_HANDLE);
+// 	cout<<"Please inter 'Q' to terminal.\n"<<endl;
+// 	while(true)
+// 	{
+// 		switch(WaitForMultipleObjects(2, h, FALSE, INFINITE))
+// 		{
+// 		case WAIT_OBJECT_0:
+// 			goto stop;
+// 		case WAIT_OBJECT_0 + 1:
+// 			processConsoleCommand(h[1]); 
+// 		default:
+// 			break;
+// 		}
+// 	}
 } 
+
+int _tmain(int argc, char* argv[])
+{
+	Drawer drawer(target, coordinate, StateHandle);
+	drawer.StartUp(argc, argv);
+	return 0;
+}
