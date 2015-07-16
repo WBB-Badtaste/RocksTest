@@ -21,7 +21,7 @@
 
 using namespace std;
 
-//#define GET_MOTION_VAR
+//#define DRAW_TCP
 //#define USE_NODE
 #define USE_AXIS
 #define SIM_METHOD
@@ -33,6 +33,7 @@ HANDLE hEvStop;
 
 LONG64 times = 0;
 LONG64 timesCounter = 0;
+
 
 void HandleError(const char *name)
 {
@@ -162,10 +163,10 @@ BOOL InitAxis(void)
 				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacHome( axId[ ax ] );
 				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacSynchronize( axId[ ax ], SAC_REQ_HOMING_COMPLETED, 10 );
 				break;
-			case SAC_MOVING:
-				printf("Waiting the motion stop...");
-				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacSynchronize( axId[ ax ], SAC_REQ_MOTION_STOPPED, 30 );
-				break;
+// 			case SAC_MOVING:
+// 				printf("Waiting the motion stop...");
+// 				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacSynchronize( axId[ ax ], SAC_REQ_MOTION_STOPPED, 30 );
+// 				break;
 			}
 		}
 
@@ -180,6 +181,8 @@ BOOL InitAxis(void)
 	return TRUE;
 }
 #endif // USE_AXIS
+
+uint32_t posVarIndex[NUM_AXES];
 
 ROCKS_MECH  m_mech;
 ROCKS_KIN_INV_PARS kinPars;
@@ -202,10 +205,7 @@ NYCE_STATUS RocksKinDeltaPosition(struct rocks_mech* pMech, double pPos[])
 {
 	double pJointPos[ROCKS_MECH_MAX_DOF];
 	NYCE_STATUS status = NYCE_OK;
-	for (uint32_t ax = 0; ax < pMech->nrOfJoints; ax++)
-	{
-		status = NyceError(status) ? status : SacReadVariable(axId[ax], SAC_VAR_SETPOINT_POS, &pJointPos[ax]);
-	}
+	status = NyceError(status) ? status : NyceReadVariableSet(posVarIndex[0], posVarIndex[NUM_AXES - 1], pJointPos);
 	status = NyceError(status) ? status : RocksKinForwardDelta(pMech, pJointPos, pPos);	
 
 // 	pPos[0] = (double)(int)(pPos[0] * 100000) / 100000;
@@ -547,7 +547,6 @@ unsigned __stdcall ThreadRocksLoop(void* lpParam)
 
 BOOL Rocks(void)
 {
-	
 	ROCKS_TRAJ_SINE_ACC_CIRCLE_PARS sineAccPars;
 	// Create mechanism
 	// ----------------
@@ -573,10 +572,10 @@ BOOL Rocks(void)
 
 	// Define the circle
 	// -----------------
-	sineAccPars.maxVelocity = 10000;
+	sineAccPars.maxVelocity = 500;
 	sineAccPars.maxAcceleration = 100000;
 	sineAccPars.splineTime = 0.001;
-	sineAccPars.center[ 0 ] = sineAccPars.startPos[0] + 150;
+	sineAccPars.center[ 0 ] = sineAccPars.startPos[0] + 100;
 	sineAccPars.center[ 1 ] = sineAccPars.startPos[1];
 	sineAccPars.angle = M_PI * 8;
 	sineAccPars.plane = ROCKS_PLANE_XY;
@@ -595,7 +594,7 @@ BOOL Rocks(void)
 		kinPars.pJointVelocityBuffer[ ax ] = NULL;
 	}
 
-	rocksPose.r.x = M_PI_4;
+	rocksPose.r.x = M_PI_4 ;
 	rocksPose.r.y = 0;
 	rocksPose.r.z = 0;
 
@@ -608,9 +607,9 @@ BOOL Rocks(void)
 	rocksPose.t.x = sineAccPars.startPos[0] - buffer[0];
 	rocksPose.t.y = sineAccPars.startPos[1] - buffer[1];
 	rocksPose.t.z = sineAccPars.startPos[2] - buffer[2];
-	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinMoveOrigin(&m_mech, &rocksPose);
+	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinMoveOrigin( &m_mech, &rocksPose );
 
-	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajGetPath( &m_mech, &rocksTrajPath);
+	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajGetPath( &m_mech, &rocksTrajPath );
 
 	if (NyceError( nyceStatus ))
 	{
@@ -654,37 +653,18 @@ void processConsoleCommand(HANDLE hConlseInput)
 	}
 }
 
-#ifdef GET_MOTION_VAR
-#include <fstream>
-#define ADDR "..\\"
-uint32_t varIndexs[NUM_AXES];
-double vars[NUM_AXES];
-
 void OnInterpolantEvent( NYCE_ID nyceId, NYCE_EVENT eventId, NYCE_EVENT_DATA *pEventData, void *pUserData )
 {
-	ofstream *pFile = (ofstream *)pUserData;
 	NYCE_STATUS myStatus = NYCE_OK;
 	double cartesianPos[ROCKS_MECH_MAX_DOF];
-	myStatus = NyceError(myStatus) ? myStatus : NyceReadVariableSet(varIndexs[0], varIndexs[NUM_AXES - 1], vars);
-	myStatus = NyceError(myStatus) ? myStatus : RocksKinCartesianPosition(&m_mech, cartesianPos);
+	myStatus = NyceError(myStatus) ? myStatus : RocksKinDeltaPosition(&m_mech, cartesianPos);
 	if (NyceError(myStatus))
 	{
-		HandleError(myStatus, "NyceReadVariableSet");
+		HandleError(myStatus, "RocksKinDeltaPosition");
 		SetEvent(hEvStop);
 		return;
 	}
- 	for (int i = 0; i <NUM_AXES; ++i)
- 	{
-		*pFile<<vars[i]<<" ";
- 	}
-	for (int i = 0; i <NUM_AXES; ++i)
-	{
-		*pFile<<cartesianPos[i]<<" ";
-	}
-	*pFile<<endl;
 }
-
-#endif // GET_MOTION_VAR
 
 int _tmain(int argc, _TCHAR* argv[])
 {
@@ -692,15 +672,6 @@ int _tmain(int argc, _TCHAR* argv[])
 	uint32_t varIndex = 0;
 	unsigned uThreadRocks = 0;
 
-#ifdef GET_MOTION_VAR
-	SYSTEMTIME time;
-	CHAR buffer[30];
-	string addrText(ADDR);
-	GetSystemTime(&time);
-	sprintf_s(buffer, "SampleVars%d-%d-%d.txt", time.wYear, time.wMonth, time.wDay);
-	addrText += buffer;
-	ofstream file(addrText);
-#endif // GET_MOTION_VAR
 	
 	printf("Begin...\n");
 #ifdef SIM_METHOD
@@ -728,7 +699,7 @@ int _tmain(int argc, _TCHAR* argv[])
 			   //--For example, the error "spline buffer empty" occur.
 #endif // NT
 
-#ifdef GET_MOTION_VAR
+#ifdef DRAW_TCP
 
 	nyceStatus = NyceError(nyceStatus) ? nyceStatus : SacDefineEventEnrolment(axId[0], SAC_EV_INTERPOLANT_STARTED, OnInterpolantEvent, (void * )&file);
 	if (NyceError(nyceStatus)) goto end;
@@ -742,6 +713,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 		varIndexs[ax] = varIndex;
 	}
+
 // 	for (int ax = 0; ax <NUM_AXES; ++ax)
 // 	{
 // 		nyceStatus = SacAddVariableToSet(axId[ax], SAC_VAR_AXIS_VEL, &varIndex);
@@ -754,6 +726,17 @@ int _tmain(int argc, _TCHAR* argv[])
 // 	}
 
 #endif 
+
+	for (int ax = 0; ax <NUM_AXES; ++ax)
+	{
+		nyceStatus = SacAddVariableToSet(axId[ax], SAC_VAR_SETPOINT_POS, &posVarIndex[ax]);
+		if (NyceError(nyceStatus))
+		{
+			HandleError(axName[ax]);
+			goto term;
+		}
+	}
+
 	if (!Rocks()) goto term;
 
 	hThreadRocks = (HANDLE)_beginthreadex(NULL, NULL, ThreadRocksLoop, NULL, 0,&uThreadRocks);
@@ -786,14 +769,22 @@ stop:
 	CloseHandle(hThreadRocks);
 	
 term:
-#ifdef GET_MOTION_VAR
+	for (int ax = 0; posVarIndex[ax] >0; ax++)
+	{
+		nyceStatus = SacDeleteVariableFromSet(posVarIndex[ax]);
+		if (NyceError(nyceStatus))
+		{
+			HandleError(axName[ax]);
+			goto term;
+		}
+	}
+
+#ifdef DRAW_TCP
 	for (int ax = 0; ax < NUM_AXES; ++ax)
 	{
 		nyceStatus = NyceError(nyceStatus) ? nyceStatus : SacDeleteEventEnrolment(axId[ax], SAC_EV_INTERPOLANT_STARTED, OnInterpolantEvent, NULL);
 	}
-
-	file.close();
-#endif // GET_MOTION_VAR
+#endif // DRAW_TCP
 	
 end:
 #ifdef USE_NODE
