@@ -29,7 +29,7 @@ using namespace std;
 #define SIM_METHOD
 
 //const double rate_angle2pu = 0.5 / M_PI * 10000;
-const double rate_angle2pu = 171032 * 11 / (2 * M_PI);
+const double rate_angle2pu = 131072 * 11 / (2 * M_PI);
 
 NYCE_STATUS nyceStatus;
 HANDLE hEvStop;
@@ -579,10 +579,10 @@ BOOL Rocks(void)
 
 	// Define the circle
 	// -----------------
-	sineAccPars.maxVelocity = 171032*11 *100;
-	sineAccPars.maxAcceleration = 171032 *11* 1000;
+	sineAccPars.maxVelocity = 100;
+	sineAccPars.maxAcceleration = 1000;
 	sineAccPars.splineTime = 0.001;
-	sineAccPars.center[ 0 ] = sineAccPars.startPos[0] + 171032*11*10;
+	sineAccPars.center[ 0 ] = sineAccPars.startPos[0] + 10;
 	sineAccPars.center[ 1 ] = sineAccPars.startPos[1];
 	sineAccPars.angle = M_PI * 8;
 	sineAccPars.plane = ROCKS_PLANE_XY;
