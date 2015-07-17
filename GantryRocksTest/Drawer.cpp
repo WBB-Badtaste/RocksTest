@@ -29,6 +29,14 @@ void Drawer::KeyboardFunc(unsigned char key, int x, int y)
 	case 'A':
 		*pState = 5;
 		break;
+	case 'c':
+	case 'C':
+		*pState = 7;
+		break;
+	case 'm':
+	case 'M':
+		*pState = 8;
+		break;
 	case 'w':
 	case 'W':
 		pCamera->MoveFront();

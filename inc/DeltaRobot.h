@@ -13,10 +13,10 @@ const double tan30 = 1 / sqrt3;
 
 // robot geometry
 // (look at M_PIcs above for explanation) 
-double e = 85;     // end effector
-double f = 100;     // base
-double re = 195;
-double rf = 95;
+double e = 40;     // end effector
+double f = 105;     // base
+double re = 194;
+double rf = 90;
 
 double mm2pu = 1;//convert mm unit to pu
     
