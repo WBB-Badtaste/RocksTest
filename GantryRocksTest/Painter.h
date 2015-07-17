@@ -6,11 +6,13 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
+#define BUFFER_SIZE 10000
+
 class Painter
 {
 private:
 	const double scale;
-	double drawPoint[3000][3];
+	double drawPoint[BUFFER_SIZE][3];
 	int indexDraw;
 	HANDLE  hMutex;
 

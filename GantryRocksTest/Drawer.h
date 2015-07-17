@@ -33,15 +33,16 @@ static int mouseLocation[2];
 static Camera* pCamera;
 static Painter* pPainter;
 static STATEMACHINE_FUNC StateMachine;
+static int* pState;
 
 class Drawer
 {
 public:
-	Drawer(double target[],double coordinate[],STATEMACHINE_FUNC);
+	Drawer(double target[],double coordinate[],STATEMACHINE_FUNC, int*);
 	~Drawer(void);
 
 	void StartUp(int argc,char** argv);
-
+	void AddTcpPoint(double point[]);
 private:
 
 	static void KeyboardFunc(unsigned char key, int x, int y);

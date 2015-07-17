@@ -4,7 +4,7 @@
 double screenWidth=GetSystemMetrics(SM_CXSCREEN);  
 double screenHeight=GetSystemMetrics(SM_CYSCREEN); 
 
-Drawer::Drawer(double target[],double coordinate[],STATEMACHINE_FUNC p)
+Drawer::Drawer(double target[],double coordinate[],STATEMACHINE_FUNC p,int* state)
 {
  	mmt = noMotion;
 	mbt = noButton;
@@ -12,6 +12,7 @@ Drawer::Drawer(double target[],double coordinate[],STATEMACHINE_FUNC p)
 	pCamera= new Camera(target);
 	pPainter= new Painter(coordinate);
 	StateMachine = p;
+	pState = state;
 }
 
 Drawer::~Drawer(void)
@@ -190,5 +191,12 @@ void Drawer::StartUp(int argc, char **argv)
 	glutMouseFunc(MousePassFunc);
 	glutMotionFunc(MouseMotionFunc);
 	glutMainLoop(); // GLUT ×´Ì¬»ú
+
+	
+}
+
+void Drawer::AddTcpPoint(double point[])
+{
+	pPainter->AddTcpPoint(point);
 }
 

@@ -12,7 +12,7 @@ Painter::Painter(double coordinate[]):
 	coordinate_z_min(coordinate[4]),
 	coordinate_z_max(coordinate[5])
 {
-	for (int i = 0; i < 3000; ++i)
+	for (int i = 0; i < BUFFER_SIZE; ++i)
 	{
 		drawPoint[i][0] = drawPoint[i][1] = drawPoint[i][2] = 0;
 	}
@@ -145,7 +145,7 @@ void Painter::Draw()
 void Painter::AddTcpPoint(double point[])
 {
 	WaitForSingleObject(hMutex, INFINITE);
-	if (++indexDraw == 3000)
+	if (++indexDraw == BUFFER_SIZE)
 		indexDraw = 0;                         
 	drawPoint[indexDraw][0] = point[0];
 	drawPoint[indexDraw][1] = point[2];

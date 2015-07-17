@@ -28,7 +28,8 @@ using namespace std;
 #define USE_AXIS
 #define SIM_METHOD
 
-const double rate_angle2pu = 0.5 / M_PI * 10000;
+//const double rate_angle2pu = 0.5 / M_PI * 10000;
+const double rate_angle2pu = 171032 * 11 / (2 * M_PI);
 
 NYCE_STATUS nyceStatus;
 HANDLE hEvStop;
@@ -38,6 +39,8 @@ LONG64 timesCounter = 0;
 
 double coordinate[6] = {0, 200, -535, -335, -100, 100};
 double target[3] = {(coordinate[1] + coordinate[0]) / 2, (coordinate[3] + coordinate[2]) / 2, (coordinate[5] + coordinate[4]) / 2};
+
+Drawer *pDrawer;
 
 void HandleError(const char *name)
 {
@@ -164,6 +167,8 @@ BOOL InitAxis(void)
 			case SAC_FREE:
 				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacLock( axId[ ax ] );
 				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacSynchronize( axId[ ax ], SAC_REQ_LOCK, 10 );
+
+				//回零是危险操作，若回零会使单轴运动则要禁止
 				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacHome( axId[ ax ] );
 				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacSynchronize( axId[ ax ], SAC_REQ_HOMING_COMPLETED, 10 );
 				break;
@@ -574,10 +579,10 @@ BOOL Rocks(void)
 
 	// Define the circle
 	// -----------------
-	sineAccPars.maxVelocity = 500;
-	sineAccPars.maxAcceleration = 100000;
+	sineAccPars.maxVelocity = 171032*11 *100;
+	sineAccPars.maxAcceleration = 171032 *11* 1000;
 	sineAccPars.splineTime = 0.001;
-	sineAccPars.center[ 0 ] = sineAccPars.startPos[0] + 100;
+	sineAccPars.center[ 0 ] = sineAccPars.startPos[0] + 171032*11*10;
 	sineAccPars.center[ 1 ] = sineAccPars.startPos[1];
 	sineAccPars.angle = M_PI * 8;
 	sineAccPars.plane = ROCKS_PLANE_XY;
@@ -622,38 +627,38 @@ BOOL Rocks(void)
 	return TRUE;
 }
 
-WORD number;
-CHAR str[1000];
-int counter = 0;
-
-void processConsoleCommand(HANDLE hConlseInput)
-{
-	INPUT_RECORD irInBuf[128];
-	ReadConsoleInput(hConlseInput, irInBuf, 128, (LPDWORD)&number);
-	for (int i =0; i < number; ++i )
-	{
-		if(irInBuf[i].EventType == KEY_EVENT && irInBuf[i].Event.KeyEvent.bKeyDown)
-		{
-			if (irInBuf[i].Event.KeyEvent.uChar.AsciiChar == 13)
-			{
-				str[counter] = '\0';
-				counter = 0;
-				cout<<str<<endl;
-				if (strcmp(str, "q") || strcmp(str, "Q"))
-				{
-					SetEvent(hEvStop);
-				}
-				else
-					cout<<"Please inter 'Q' to terminal.\n"<<endl;	
-			}
-			else
-			{
-				str[counter] = irInBuf[i].Event.KeyEvent.uChar.AsciiChar;
-				counter++;
-			}
-		}
-	}
-}
+// WORD number;
+// CHAR str[1000];
+// int counter = 0;
+// 
+// void processConsoleCommand(HANDLE hConlseInput)
+// {
+// 	INPUT_RECORD irInBuf[128];
+// 	ReadConsoleInput(hConlseInput, irInBuf, 128, (LPDWORD)&number);
+// 	for (int i =0; i < number; ++i )
+// 	{
+// 		if(irInBuf[i].EventType == KEY_EVENT && irInBuf[i].Event.KeyEvent.bKeyDown)
+// 		{
+// 			if (irInBuf[i].Event.KeyEvent.uChar.AsciiChar == 13)
+// 			{
+// 				str[counter] = '\0';
+// 				counter = 0;
+// 				cout<<str<<endl;
+// 				if (strcmp(str, "q") || strcmp(str, "Q"))
+// 				{
+// 					SetEvent(hEvStop);
+// 				}
+// 				else
+// 					cout<<"Please inter 'Q' to terminal.\n"<<endl;	
+// 			}
+// 			else
+// 			{
+// 				str[counter] = irInBuf[i].Event.KeyEvent.uChar.AsciiChar;
+// 				counter++;
+// 			}
+// 		}
+// 	}
+// }
 
 void OnInterpolantEvent( NYCE_ID nyceId, NYCE_EVENT eventId, NYCE_EVENT_DATA *pEventData, void *pUserData )
 {
@@ -666,6 +671,7 @@ void OnInterpolantEvent( NYCE_ID nyceId, NYCE_EVENT eventId, NYCE_EVENT_DATA *pE
 		SetEvent(hEvStop);
 		return;
 	}
+	pDrawer->AddTcpPoint(cartesianPos);
 }
 
 int programState = 0;
@@ -792,7 +798,7 @@ void StateHandle()
 // 	cout<<"Please inter 'Q' to terminal.\n"<<endl;
 // 	while(true)
 // 	{
-// 		switch(WaitForMultipleObjects(2, h, FALSE, INFINITE))
+// 		switch(WaitForMultipleObjects(2, h, FALSE, INFINITE))8
 // 		{
 // 		case WAIT_OBJECT_0:
 // 			goto stop;
@@ -806,7 +812,8 @@ void StateHandle()
 
 int _tmain(int argc, char* argv[])
 {
-	Drawer drawer(target, coordinate, StateHandle);
+	Drawer drawer(target, coordinate, StateHandle, &programState);
+	pDrawer = &drawer;
 	drawer.StartUp(argc, argv);
 	return 0;
 }
