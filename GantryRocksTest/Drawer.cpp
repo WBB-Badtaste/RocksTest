@@ -25,17 +25,9 @@ void Drawer::KeyboardFunc(unsigned char key, int x, int y)
 {
 	switch(key)
 	{
-	case 'b':
-	case 'B':
-		break;
-	case 't':
-	case 'T':
-		break;
 	case 'a':
 	case 'A':
-		break;
-	case 'd':
-	case 'D':
+		*pState = 5;
 		break;
 	case 'w':
 	case 'W':
@@ -44,12 +36,6 @@ void Drawer::KeyboardFunc(unsigned char key, int x, int y)
 	case 's':
 	case 'S':
 		pCamera->MoveBack();		
-		break;
-	case 'q':
-	case 'Q':
-		break;
-	case 'e':
-	case 'E':
 		break;
 	default:
 		break;

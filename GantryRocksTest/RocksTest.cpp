@@ -33,6 +33,7 @@ const double rate_angle2pu = 131072 * 11 / (2 * M_PI);
 
 NYCE_STATUS nyceStatus;
 HANDLE hEvStop;
+HANDLE hAuto;
 
 LONG64 times = 0;
 LONG64 timesCounter = 0;
@@ -466,6 +467,9 @@ unsigned __stdcall ThreadRocksLoop(void* lpParam)
 
 	while(!bRocksTerm)
 	{
+
+		WaitForSingleObject(hAuto, INFINITE);
+
 		Status = NyceError( Status ) ? Status : RocksTrajLoadPath(&m_mech, &rocksTrajPath);
 
 		Status = NyceError( Status ) ? Status : RocksKinInverseDelta( &m_mech, &kinPars );
@@ -697,7 +701,6 @@ void StateHandle()
 			
 			programState = 4;
 			break;
-			
 		}
 
 #ifdef USE_NODE
@@ -707,6 +710,7 @@ void StateHandle()
 			break;
 		}
 #endif // USE_NODE
+
 #ifdef USE_AXIS
 		if (!InitAxis())
 		{
@@ -745,13 +749,15 @@ void StateHandle()
 			break;
 		}
 
+		hAuto =  CreateEvent(NULL,TRUE,FALSE,NULL);
+
 		hThreadRocks = (HANDLE)_beginthreadex(NULL, NULL, ThreadRocksLoop, NULL, 0,&uThreadRocks);
 
+		
 		hEvStop = CreateEvent(NULL,TRUE,FALSE,NULL);
 		Sleep(10);
 
 		programState = 1;
-		break; //case 0
 	case 1:
 		break;
 	case 2:
@@ -787,10 +793,26 @@ void StateHandle()
 		}
 		printf("End.\n");
 		break; //case 4
+	case 5://自动圆周开关
+		if (WaitForSingleObject(hAuto,0) == WAIT_OBJECT_0 )
+		{
+			ResetEvent(hAuto);
+		}
+		else
+		{
+			SetEvent(hAuto);
+		}
+		programState = 1;
+		break;
+	case 6://回零
+		programState = 1;
+		break;
+	case 7://自动门型开关
+		programState = 1;
+		break;
 	default:
 		break;
 	}
-	
 
 // 	HANDLE h[2];//no need to close there two HANDLE.
 // 	h[0] = hEvStop;
