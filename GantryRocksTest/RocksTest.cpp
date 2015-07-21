@@ -36,7 +36,7 @@ HANDLE hEvStop;
 HANDLE hAuto;
 
 HANDLE hAutoPathUsing;
-int pathType = 1;
+int pathType = 0;
 
 LONG64 times = 0;
 LONG64 timesCounter = 0;
@@ -237,10 +237,6 @@ NYCE_STATUS RocksKinDeltaPosition(struct rocks_mech* pMech, double pPos[])
 	status = NyceError(status) ? status : NyceReadVariableSet(posVarIndex[0], posVarIndex[NUM_AXES - 1], pJointPos);
 	status = NyceError(status) ? status : RocksKinForwardDelta(pMech, pJointPos, pPos);	
 
-// 	pPos[0] = (double)(int)(pPos[0] * 100000) / 100000;
-// 	pPos[1] = (double)(int)(pPos[1] * 100000) / 100000;
-// 	pPos[2] = (double)(int)(pPos[2] * 100000) / 100000;
-
 	if (NyceError(status))
 	{
 		HandleError(status, "RocksKinDeltaPosition");
@@ -274,14 +270,6 @@ void DeltaPath2WorldCoordinate(ROCKS_MECH* pMech, uint32_t index, double *pPosit
 {
 	if (pMech->var.moveType == ROCKS_MOVE_TYPE_CIRCULAR)//check the path type
 	{
-// 		double alhpa = acos(-pMech->var.center[0] / sqrt(pMech->var.center[0] * pMech->var.center[0] + pMech->var.center[1] * pMech->var.center[1]));
-// 		double beta = pMech->var.center[1] < 0 ? alhpa : M_PI * 2 - alhpa;
-// 		double angle;
-// 		if (pMech->var.angle > 0)
-// 			angle = beta - pMech->var.pPositionSplineBuffer[index] / pMech->var.radius;
-// 		else
-// 			angle = beta + pMech->var.pPositionSplineBuffer[index] / pMech->var.radius;
-
 		double angle;
 		double alhpa;
 		double beta ;
@@ -289,10 +277,6 @@ void DeltaPath2WorldCoordinate(ROCKS_MECH* pMech, uint32_t index, double *pPosit
 		switch(pMech->var.plane)
 		{
 		case ROCKS_PLANE_XY:
-// 			CenterWorldCoordinate[0] = pMech->var.startPos[0] + pMech->var.center[0];
-// 			CenterWorldCoordinate[1] = pMech->var.startPos[1] + pMech->var.center[1];
-// 			CenterWorldCoordinate[2] = pMech->var.startPos[2];
-
 			//这个只需计算一次！！！
 			alhpa = acos((pMech->var.startPos[0] - pMech->var.center[0]) / sqrt((pMech->var.startPos[0] - pMech->var.center[0]) * (pMech->var.startPos[0] - pMech->var.center[0]) + (pMech->var.startPos[1] - pMech->var.center[1]) * (pMech->var.startPos[1] - pMech->var.center[1])));
 			beta = pMech->var.center[1] < 0 ? alhpa : M_PI * 2 - alhpa;
@@ -324,10 +308,6 @@ void DeltaPath2WorldCoordinate(ROCKS_MECH* pMech, uint32_t index, double *pPosit
 			}
 			break;
 		case ROCKS_PLANE_YZ:
-// 			CenterWorldCoordinate[0] = pMech->var.startPos[0];
-// 			CenterWorldCoordinate[1] = pMech->var.startPos[1] + pMech->var.center[0];
-// 			CenterWorldCoordinate[2] = pMech->var.startPos[2] + pMech->var.center[1];
-
 			alhpa = acos((pMech->var.startPos[1] - pMech->var.center[0]) / sqrt((pMech->var.startPos[1] - pMech->var.center[0]) * (pMech->var.startPos[1] - pMech->var.center[0]) + (pMech->var.startPos[2] - pMech->var.center[1]) * (pMech->var.startPos[2] - pMech->var.center[1])));
 			beta = pMech->var.center[1] < 0 ? alhpa : M_PI * 2 - alhpa;
 			if (pMech->var.angle > 0)
@@ -357,10 +337,6 @@ void DeltaPath2WorldCoordinate(ROCKS_MECH* pMech, uint32_t index, double *pPosit
 			} 
 			break;
 		case ROCKS_PLANE_ZX:
-// 			CenterWorldCoordinate[0] = pMech->var.startPos[0] + pMech->var.center[1];
-// 			CenterWorldCoordinate[1] = pMech->var.startPos[1];
-// 			CenterWorldCoordinate[2] = pMech->var.startPos[2] + pMech->var.center[0];
-
 			alhpa = acos((pMech->var.startPos[2] - pMech->var.center[0]) / sqrt((pMech->var.startPos[2] - pMech->var.center[0]) * (pMech->var.startPos[2] - pMech->var.center[0]) + (pMech->var.startPos[0] - pMech->var.center[1]) * (pMech->var.startPos[0] - pMech->var.center[1])));
 			beta = pMech->var.center[1] < 0 ? alhpa : M_PI * 2 - alhpa;
 			if (pMech->var.angle > 0)
@@ -390,50 +366,68 @@ void DeltaPath2WorldCoordinate(ROCKS_MECH* pMech, uint32_t index, double *pPosit
 			}
 			break;
 		}	
+		if (pMech->var.refFramePose2.r.x)
+		{
+			Roll(pPosition, pMech->var.refFramePose2.r.x);
+			Roll(pVelocity, pMech->var.refFramePose2.r.x);
+		}
+
+		if (pMech->var.refFramePose2.r.y)
+		{
+			Pitch(pPosition, pMech->var.refFramePose2.r.y);
+			Pitch(pVelocity, pMech->var.refFramePose2.r.y);
+		}
+
+		if (pMech->var.refFramePose2.r.z)
+		{
+			Yaw(pPosition, pMech->var.refFramePose2.r.z);
+			Yaw(pVelocity, pMech->var.refFramePose2.r.z);
+		}
+
+		pPosition[0] += pMech->var.refFramePose2.t.x;
+		pPosition[1] += pMech->var.refFramePose2.t.y;
+		pPosition[2] += pMech->var.refFramePose2.t.z;
 	} 
 
-	if (pMech->var.moveType == ROCKS_MOVE_TYPE_LINEAR)
-	{
-		double distance = m_mech.var.pPositionSplineBuffer[m_mech.var.usedNrOfSplines - 1];
-		double rate_x = (m_mech.var.endPos[0] - m_mech.var.startPos[0]) /  m_mech.var.pPositionSplineBuffer[m_mech.var.usedNrOfSplines - 1];
-		double rate_y = (m_mech.var.endPos[1] - m_mech.var.startPos[1]) /  m_mech.var.pPositionSplineBuffer[m_mech.var.usedNrOfSplines - 1];
-		double rate_z = (m_mech.var.endPos[2] - m_mech.var.startPos[2]) /  m_mech.var.pPositionSplineBuffer[m_mech.var.usedNrOfSplines - 1];
-		
-		pPosition[0] = pMech->var.pPositionSplineBuffer[index] * rate_x + m_mech.var.startPos[0];
-		pPosition[1] = pMech->var.pPositionSplineBuffer[index] * rate_y + m_mech.var.startPos[1];
-		pPosition[2] = pMech->var.pPositionSplineBuffer[index] * rate_z + m_mech.var.startPos[2];
-																	   
-		pVelocity[0] = pMech->var.pVelocitySplineBuffer[index] * rate_x;
-		pVelocity[1] = pMech->var.pVelocitySplineBuffer[index] * rate_y;
-		pVelocity[2] = pMech->var.pVelocitySplineBuffer[index] * rate_z;
-	}
-
-	if (pMech->var.refFramePose2.r.x)
-	{
-		Roll(pPosition, pMech->var.refFramePose2.r.x);
-		Roll(pVelocity, pMech->var.refFramePose2.r.x);
-	}
-
-	if (pMech->var.refFramePose2.r.y)
-	{
-		Pitch(pPosition, pMech->var.refFramePose2.r.y);
-		Pitch(pVelocity, pMech->var.refFramePose2.r.y);
-	}
-
-	if (pMech->var.refFramePose2.r.z)
-	{
-		Yaw(pPosition, pMech->var.refFramePose2.r.z);
-		Yaw(pVelocity, pMech->var.refFramePose2.r.z);
-	}
-
-	pPosition[0] += pMech->var.refFramePose2.t.x;
-	pPosition[1] += pMech->var.refFramePose2.t.y;
-	pPosition[2] += pMech->var.refFramePose2.t.z;
+// 	if (pMech->var.moveType == ROCKS_MOVE_TYPE_LINEAR)
+// 	{
+// 		double distance = m_mech.var.pPositionSplineBuffer[m_mech.var.usedNrOfSplines - 1];
+// 		double rate_x = (m_mech.var.endPos[0] - m_mech.var.startPos[0]) /  m_mech.var.pPositionSplineBuffer[m_mech.var.usedNrOfSplines - 1];
+// 		double rate_y = (m_mech.var.endPos[1] - m_mech.var.startPos[1]) /  m_mech.var.pPositionSplineBuffer[m_mech.var.usedNrOfSplines - 1];
+// 		double rate_z = (m_mech.var.endPos[2] - m_mech.var.startPos[2]) /  m_mech.var.pPositionSplineBuffer[m_mech.var.usedNrOfSplines - 1];
+// 		
+// 		pPosition[0] = pMech->var.pPositionSplineBuffer[index] * rate_x + m_mech.var.startPos[0];
+// 		pPosition[1] = pMech->var.pPositionSplineBuffer[index] * rate_y + m_mech.var.startPos[1];
+// 		pPosition[2] = pMech->var.pPositionSplineBuffer[index] * rate_z + m_mech.var.startPos[2];
+// 																	   
+// 		pVelocity[0] = pMech->var.pVelocitySplineBuffer[index] * rate_x;
+// 		pVelocity[1] = pMech->var.pVelocitySplineBuffer[index] * rate_y;
+// 		pVelocity[2] = pMech->var.pVelocitySplineBuffer[index] * rate_z;
+// 	}
 } 
 
 NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pKin)
 {
 	uint32_t ax = 0;
+	if (m_mech.var.jointBuffersAllocated)
+	{
+		int i;
+		for (i = 0; i < ROCKS_MECH_MAX_NR_OF_JOINTS; i++)
+		{
+			if (m_mech.var.pJointPositionBufferC[i] != NULL)
+			{
+				free(m_mech.var.pJointPositionBufferC[i]);
+				m_mech.var.pJointPositionBufferC[i] = NULL;
+			}
+			if (m_mech.var.pJointVelocityBufferC[i] != NULL)
+			{
+				free(m_mech.var.pJointVelocityBufferC[i]);
+				m_mech.var.pJointVelocityBufferC[i] = NULL;
+			}
+		}
+		m_mech.var.jointBuffersAllocated = FALSE;
+	}
+
 	while (!pMech->var.jointBuffersAllocated)
 	{
 		pMech->var.pJointPositionBufferC[ax] = (double*)malloc(sizeof(double) * pMech->var.maxNrOfSplines);
@@ -441,9 +435,9 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 		if(++ax == pMech->nrOfJoints) 
 		{
 			pMech->var.jointBuffersAllocated = TRUE;
+			pMech->var.pGetWorldSetpointPosFunc = RocksKinDeltaPosition;
 			pMech->var.pApplyForwardKinFunc = RocksKinForwardDelta;
 			pMech->var.pApplyInverseKinFunc = RocksKinInverseDelta;
-			pMech->var.pGetWorldSetpointPosFunc = RocksKinDeltaPosition;
 		}
 	}
 
@@ -535,27 +529,6 @@ unsigned __stdcall ThreadRocksLoop(void* lpParam)
 	}	
 
 	Status = NyceError( Status ) ? Status : RocksTrajDeletePath( &m_mech, &rocksTrajPath);
-
-// 	if (m_mech.var.pathBuffersAllocated)
-// 	{
-// 		if (m_mech.var.pPositionSplineBuffer != NULL)
-// 		{
-// 			free(m_mech.var.pPositionSplineBuffer);
-// 			m_mech.var.pPositionSplineBuffer = NULL;
-// 		}
-// 		if (m_mech.var.pVelocitySplineBuffer != NULL)
-// 		{
-// 			free(m_mech.var.pVelocitySplineBuffer);
-// 			m_mech.var.pVelocitySplineBuffer = NULL;
-// 		}
-// 		if (m_mech.var.pTimeSplineBuffer != NULL)
-// 		{
-// 			free(m_mech.var.pTimeSplineBuffer);
-// 			m_mech.var.pTimeSplineBuffer = NULL;
-// 		}
-// 	
-// 		m_mech.var.pathBuffersAllocated = FALSE;
-// 	}
 	
 	if (m_mech.var.jointBuffersAllocated)
 	{
@@ -573,7 +546,6 @@ unsigned __stdcall ThreadRocksLoop(void* lpParam)
 				m_mech.var.pJointVelocityBufferC[i] = NULL;
 			}
 		}
-		/*m_mech.var.jointBuffersAllocated = FALSE;*/
 	}
 
 	// Delete mechanism
@@ -638,9 +610,9 @@ BOOL RocksGotoReadyPosition()
 	sinePtpPars.endPos[3] = 0;
 	sinePtpPars.endPos[4] = 0;
 	sinePtpPars.endPos[5] = 0;
-	sinePtpPars.maxVelocity = 10;
-	sinePtpPars.maxAcceleration = 100;
-	sinePtpPars.splineTime = 0.01;
+	sinePtpPars.maxVelocity = 1000;
+	sinePtpPars.maxAcceleration = 10000;
+	sinePtpPars.splineTime = 0.001;
 	sinePtpPars.maxNrOfSplines = 0;
 	sinePtpPars.pPositionSplineBuffer = NULL;
 	sinePtpPars.pVelocitySplineBuffer = NULL;
@@ -659,30 +631,6 @@ BOOL RocksGotoReadyPosition()
 	// Synchronize on motion complete
 	// ------------------------------
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksStreamSynchronize( &m_mech, SAC_INDEFINITE);
-
-// 	SAC_PTP_PARS sacPtpPars;
-// 
-// 	sacPtpPars.position = 160000;
-// 	sacPtpPars.velocity = 160000;
-// 	sacPtpPars.acceleration = 1600000;
-// 	sacPtpPars.jerk = 16000000;
-// 	sacPtpPars.positionReference = SAC_ABSOLUTE;
-// 
-// 	for (uint32_t ax = 0; ax < NUM_AXES; ++ax)
-// 	{
-// 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : SacPointToPoint(axId[ax],&sacPtpPars);
-// 	}
-// 	for (uint32_t ax = 0; ax < NUM_AXES; ++ax)
-// 	{
-// 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : SacSynchronize(axId[ax],SAC_REQ_MOTION_STOPPED,10);
-// 	}
-// 	
-// 	if (NyceError( nyceStatus ))
-// 	{
-// 		HandleError(nyceStatus, "Rocks");
-// 		SetEvent(hEvStop);
-// 		return FALSE;
-// 	}
 
 	return TRUE;
 }
@@ -704,8 +652,8 @@ BOOL Rocks(void)
 	}
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksMechCreate( &m_mech );
 
-	if (!RocksGotoReadyPosition())
-		return FALSE;
+// 	if (!RocksGotoReadyPosition())
+// 		return FALSE;
 	
 	// Get current position
 	// --------------------
