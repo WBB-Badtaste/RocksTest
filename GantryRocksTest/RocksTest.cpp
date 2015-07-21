@@ -41,21 +41,28 @@ int pathType = 1;
 LONG64 times = 0;
 LONG64 timesCounter = 0;
 
-
 double coordinate[6] = {0, 200, -535, -335, -100, 100};
 double target[3] = {(coordinate[1] + coordinate[0]) / 2, (coordinate[3] + coordinate[2]) / 2, (coordinate[5] + coordinate[4]) / 2};
 
 Drawer *pDrawer;
 
+ROCKS_TRAJ_SINE_ACC_PTP_PARS sinePtpPars;
+ROCKS_TRAJ_SINE_ACC_CIRCLE_PARS sineAccPars;
+ROCKS_TRAJ_SEGMENT_START_PARS segStartPars;
+ROCKS_TRAJ_SEGMENT_LINE_PARS segLinePars1,segLinePars2,segLinePars3,segLinePars4,segLinePars5;
+ROCKS_TRAJ_SEGMENT_ARC_PARS segArcPars1,segArcPars2,segArcPars3,segArcPars4;
+
 void HandleError(const char *name)
 {
 	cout<<"\n\nError occur at:"<<name<<"\nError Code:"<<NyceGetStatusString(nyceStatus)<<"\n"<<endl;
+	nyceStatus = NYCE_OK;
 }
 
-void HandleError(NYCE_STATUS Status, const char *name)
+void HandleError(NYCE_STATUS &Status, const char *name)
 {
 	cout<<"\n\nError occur at:"<<name<<"\nError Code:"<<NyceGetStatusString(Status)<<"\n"<<endl;
 	cout<<"Run times:"<<timesCounter<<endl;
+	Status = NYCE_OK;
 }
 
 #ifdef USE_NODE
@@ -160,22 +167,30 @@ BOOL InitAxis(void)
 			default:
 				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacShutdown( axId[ ax ]);
 				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacSynchronize( axId[ ax ], SAC_REQ_SHUTDOWN, 10 );
+
 			case SAC_IDLE:
 				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacInitialize( axId[ ax ], SAC_USE_FLASH );
 				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacSynchronize( axId[ ax ], SAC_REQ_INITIALIZE, 10 );
 				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacGetAxisConfiguration( axId[ ax ], &axisPars );
+				
 				if ( NyceSuccess(nyceStatus) && axisPars.motorType == SAC_BRUSHLESS_AC_MOTOR )
 				{
 					nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacAlignMotor( axId[ ax ] );
 					nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacSynchronize( axId[ ax ], SAC_REQ_ALIGN_MOTOR, 10 );
 				}
 			case SAC_FREE:
+				
+
 				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacLock( axId[ ax ] );
 				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacSynchronize( axId[ ax ], SAC_REQ_LOCK, 10 );
 
 				//回零是危险操作，若回零会使单轴运动则要禁止
 				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacHome( axId[ ax ] );
 				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacSynchronize( axId[ ax ], SAC_REQ_HOMING_COMPLETED, 10 );
+
+				
+
+				
 				break;
 // 			case SAC_MOVING:
 // 				printf("Waiting the motion stop...");
@@ -374,31 +389,46 @@ void DeltaPath2WorldCoordinate(ROCKS_MECH* pMech, uint32_t index, double *pPosit
 				pVelocity[2] = -pMech->var.pVelocitySplineBuffer[index] * sin(angle);
 			}
 			break;
-		}
-
-		if (pMech->var.refFramePose2.r.x)
-		{
-			Roll(pPosition, pMech->var.refFramePose2.r.x);
-			Roll(pVelocity, pMech->var.refFramePose2.r.x);
-		}
-
-		if (pMech->var.refFramePose2.r.y)
-		{
-			Pitch(pPosition, pMech->var.refFramePose2.r.y);
-			Pitch(pVelocity, pMech->var.refFramePose2.r.y);
-		}
-
-		if (pMech->var.refFramePose2.r.z)
-		{
-			Yaw(pPosition, pMech->var.refFramePose2.r.z);
-			Yaw(pVelocity, pMech->var.refFramePose2.r.z);
-		}
-
-		pPosition[0] += pMech->var.refFramePose2.t.x;
-		pPosition[1] += pMech->var.refFramePose2.t.y;
-		pPosition[2] += pMech->var.refFramePose2.t.z;
-
+		}	
 	} 
+
+	if (pMech->var.moveType == ROCKS_MOVE_TYPE_LINEAR)
+	{
+		double distance = m_mech.var.pPositionSplineBuffer[m_mech.var.usedNrOfSplines - 1];
+		double rate_x = (m_mech.var.endPos[0] - m_mech.var.startPos[0]) /  m_mech.var.pPositionSplineBuffer[m_mech.var.usedNrOfSplines - 1];
+		double rate_y = (m_mech.var.endPos[1] - m_mech.var.startPos[1]) /  m_mech.var.pPositionSplineBuffer[m_mech.var.usedNrOfSplines - 1];
+		double rate_z = (m_mech.var.endPos[2] - m_mech.var.startPos[2]) /  m_mech.var.pPositionSplineBuffer[m_mech.var.usedNrOfSplines - 1];
+		
+		pPosition[0] = pMech->var.pPositionSplineBuffer[index] * rate_x + m_mech.var.startPos[0];
+		pPosition[1] = pMech->var.pPositionSplineBuffer[index] * rate_y + m_mech.var.startPos[1];
+		pPosition[2] = pMech->var.pPositionSplineBuffer[index] * rate_z + m_mech.var.startPos[2];
+																	   
+		pVelocity[0] = pMech->var.pVelocitySplineBuffer[index] * rate_x;
+		pVelocity[1] = pMech->var.pVelocitySplineBuffer[index] * rate_y;
+		pVelocity[2] = pMech->var.pVelocitySplineBuffer[index] * rate_z;
+	}
+
+	if (pMech->var.refFramePose2.r.x)
+	{
+		Roll(pPosition, pMech->var.refFramePose2.r.x);
+		Roll(pVelocity, pMech->var.refFramePose2.r.x);
+	}
+
+	if (pMech->var.refFramePose2.r.y)
+	{
+		Pitch(pPosition, pMech->var.refFramePose2.r.y);
+		Pitch(pVelocity, pMech->var.refFramePose2.r.y);
+	}
+
+	if (pMech->var.refFramePose2.r.z)
+	{
+		Yaw(pPosition, pMech->var.refFramePose2.r.z);
+		Yaw(pVelocity, pMech->var.refFramePose2.r.z);
+	}
+
+	pPosition[0] += pMech->var.refFramePose2.t.x;
+	pPosition[1] += pMech->var.refFramePose2.t.y;
+	pPosition[2] += pMech->var.refFramePose2.t.z;
 } 
 
 NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pKin)
@@ -424,17 +454,6 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 		double vel_joint_x, vel_joint_y, vel_joint_z;//joint angular velocity(JAV)
 
 		DeltaPath2WorldCoordinate(pMech, index, pos, vel);
-
-// 		double angle = pMech->var.pPositionSplineBuffer[index] / pMech->var.radius;
-// 		//convert PTCP to WTCP
-// 		pos[0] = pMech->var.startPos[0] + pMech->var.radius + pMech->var.radius * cos(M_PI - angle);
-// 		pos[1] = pMech->var.startPos[1] + pMech->var.radius * sin(M_PI - angle) * sin(M_PI / 2 + pMech->var.refFramePose2.r.x);
-// 		pos[2] = pMech->var.startPos[2] + pMech->var.radius * sin(M_PI - angle) * cos(M_PI / 2 + pMech->var.refFramePose2.r.x);
-// 
-// 		//convert PTCV to WTCV
-// 		vel[0] = pMech->var.pVelocitySplineBuffer[index] * sin(angle);
-// 		vel[1] = pMech->var.pVelocitySplineBuffer[index] * cos(angle) * sin(M_PI / 2 + pMech->var.refFramePose2.r.x);
-// 		vel[2] = pMech->var.pVelocitySplineBuffer[index] * cos(angle) * cos(M_PI / 2 + pMech->var.refFramePose2.r.x);
 
 		delta_calcInverse(pos[0], pos[1], pos[2], pos_joint_x, pos_joint_y, pos_joint_z);
 
@@ -500,7 +519,7 @@ unsigned __stdcall ThreadRocksLoop(void* lpParam)
 		// --------------------------
 		times++;
 		cout<<"corrent times:"<<times<<endl;
-		Status = NyceError( Status ) ? Status : RocksStream( &m_mech);	
+		Status = NyceError( Status ) ? Status : RocksStream( &m_mech );	
 
 		// Synchronize on motion complete                           
 		// ------------------------------
@@ -513,7 +532,6 @@ unsigned __stdcall ThreadRocksLoop(void* lpParam)
 			return 0;
 		}
 		timesCounter++;
-
 	}	
 
 	Status = NyceError( Status ) ? Status : RocksTrajDeletePath( &m_mech, &rocksTrajPath);
@@ -569,14 +587,8 @@ unsigned __stdcall ThreadRocksLoop(void* lpParam)
 	return 0;
 }
 
-ROCKS_TRAJ_SINE_ACC_CIRCLE_PARS sineAccPars;
-ROCKS_TRAJ_SEGMENT_START_PARS segStartPars;
-ROCKS_TRAJ_SEGMENT_LINE_PARS segLinePars1,segLinePars2,segLinePars3,segLinePars4,segLinePars5;
-ROCKS_TRAJ_SEGMENT_ARC_PARS segArcPars1,segArcPars2,segArcPars3,segArcPars4;
-
 void RocksPathHandle()
 {
-	
 	switch(pathType)
 	{
 	case 0://圆周路径
@@ -587,15 +599,16 @@ void RocksPathHandle()
 	case 1://门形路径
 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentStart(&m_mech,&segStartPars);
 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentLine(&m_mech,&segLinePars1);
-		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentArc(&m_mech,&segArcPars1);
-		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentLine(&m_mech,&segLinePars2);
-		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentArc(&m_mech,&segArcPars2);
-		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentLine(&m_mech,&segLinePars3);
-		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentArc(&m_mech,&segArcPars3);
-		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentLine(&m_mech,&segLinePars4);
-		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentArc(&m_mech,&segArcPars4);
-		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentLine(&m_mech,&segLinePars5);
+//		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentArc(&m_mech,&segArcPars1);
+ 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentLine(&m_mech,&segLinePars2);
+// 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentArc(&m_mech,&segArcPars2);
+// 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentLine(&m_mech,&segLinePars3);
+// 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentArc(&m_mech,&segArcPars3);
+// 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentLine(&m_mech,&segLinePars4);
+// 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentArc(&m_mech,&segArcPars4);
+// 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentLine(&m_mech,&segLinePars5);
 		break;
+
 	default:
 		break;
 	}
@@ -607,9 +620,72 @@ void RocksPathHandle()
 	ReleaseMutex(hAutoPathUsing);
 }
 
-const double TCP_SPEED = 10;
-const double TCP_ACC = 10000;
-const double SPLINE_TIME = 0.001;
+const double TCP_SPEED = 100;
+const double TCP_ACC = 1000;
+const double SPLINE_TIME = 0.01;
+
+BOOL RocksGotoReadyPosition()
+{
+	double readyTcp[3];
+	double readyJp[3] = {160000,160000,160000};
+	if(delta_calcForward(readyJp[0] / rate_angle2pu, readyJp[1] / rate_angle2pu, readyJp[2] / rate_angle2pu, readyTcp[0], readyTcp[1], readyTcp[2]) != 0)
+		return FALSE;
+
+	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinDeltaPosition(&m_mech, sinePtpPars.startPos);
+	sinePtpPars.endPos[0] = readyTcp[0];
+	sinePtpPars.endPos[1] = readyTcp[1];
+	sinePtpPars.endPos[2] = readyTcp[2];
+	sinePtpPars.endPos[3] = 0;
+	sinePtpPars.endPos[4] = 0;
+	sinePtpPars.endPos[5] = 0;
+	sinePtpPars.maxVelocity = 10;
+	sinePtpPars.maxAcceleration = 100;
+	sinePtpPars.splineTime = 0.01;
+	sinePtpPars.maxNrOfSplines = 0;
+	sinePtpPars.pPositionSplineBuffer = NULL;
+	sinePtpPars.pVelocitySplineBuffer = NULL;
+
+	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSineAccPtp(&m_mech,&sinePtpPars);
+
+	for (int ax = 0; ax < NUM_AXES; ++ax)
+	{
+		kinPars.pJointPositionBuffer[ ax ] = NULL;
+		kinPars.pJointVelocityBuffer[ ax ] = NULL;
+	}
+	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinInverseDelta( &m_mech, &kinPars );
+
+	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksStream( &m_mech );	
+
+	// Synchronize on motion complete
+	// ------------------------------
+	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksStreamSynchronize( &m_mech, SAC_INDEFINITE);
+
+// 	SAC_PTP_PARS sacPtpPars;
+// 
+// 	sacPtpPars.position = 160000;
+// 	sacPtpPars.velocity = 160000;
+// 	sacPtpPars.acceleration = 1600000;
+// 	sacPtpPars.jerk = 16000000;
+// 	sacPtpPars.positionReference = SAC_ABSOLUTE;
+// 
+// 	for (uint32_t ax = 0; ax < NUM_AXES; ++ax)
+// 	{
+// 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : SacPointToPoint(axId[ax],&sacPtpPars);
+// 	}
+// 	for (uint32_t ax = 0; ax < NUM_AXES; ++ax)
+// 	{
+// 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : SacSynchronize(axId[ax],SAC_REQ_MOTION_STOPPED,10);
+// 	}
+// 	
+// 	if (NyceError( nyceStatus ))
+// 	{
+// 		HandleError(nyceStatus, "Rocks");
+// 		SetEvent(hEvStop);
+// 		return FALSE;
+// 	}
+
+	return TRUE;
+}
 
 BOOL Rocks(void)
 {
@@ -628,6 +704,9 @@ BOOL Rocks(void)
 	}
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksMechCreate( &m_mech );
 
+	if (!RocksGotoReadyPosition())
+		return FALSE;
+	
 	// Get current position
 	// --------------------
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinDeltaPosition(&m_mech, sineAccPars.startPos);
@@ -654,71 +733,77 @@ BOOL Rocks(void)
 	segStartPars.pPositionSplineBuffer = NULL;
 	segStartPars.pVelocitySplineBuffer = NULL;
 	
-	segLinePars1.plane = ROCKS_PLANE_ZX;
-	segLinePars1.endPos[0] = sineAccPars.startPos[2];
-	segLinePars1.endPos[1] = sineAccPars.startPos[0] - 10;
+	segLinePars1.plane = ROCKS_PLANE_XY;
+	segLinePars1.endPos[0] = segStartPars.startPos[0] - 20;
+	segLinePars1.endPos[1] = segStartPars.startPos[1];
 	segLinePars1.endVelocity = TCP_SPEED;
-	segLinePars1.maxAcceleration = TCP_ACC ;
+	segLinePars1.maxAcceleration = TCP_ACC;
 
-	segArcPars1.plane = ROCKS_PLANE_ZX;
-	segArcPars1.center[0] = segLinePars1.endPos[0] - 2;
-	segArcPars1.center[1] = segLinePars1.endPos[1];
-	segArcPars1.endPos[0] = segLinePars1.endPos[0] - 2;
-	segArcPars1.endPos[1] = segLinePars1.endPos[1] - 2;
-	segArcPars1.endVelocity = TCP_SPEED;
-	segArcPars1.maxAcceleration = TCP_ACC ;
-	segArcPars1.positiveAngle = TRUE;
-	
-	segLinePars2.plane = ROCKS_PLANE_ZX;
-	segLinePars2.endPos[0] = segArcPars1.endPos[0] - 20;
-	segLinePars2.endPos[1] = segArcPars1.endPos[1];
-	segLinePars2.endVelocity = TCP_SPEED;
-	segLinePars2.maxAcceleration = TCP_ACC ;
+// 	segArcPars1.plane = ROCKS_PLANE_XY;
+// 	segArcPars1.center[0] = segLinePars1.endPos[0];
+// 	segArcPars1.center[1] = segLinePars1.endPos[1] - 10;
+// 	segArcPars1.endPos[0] = segLinePars1.endPos[0] - 10;
+// 	segArcPars1.endPos[1] = segLinePars1.endPos[1] - 10;
+// 	segArcPars1.endVelocity = 0;
+// 	segArcPars1.maxAcceleration = TCP_ACC ;
+// 	segArcPars1.positiveAngle = TRUE;
+// 	segArcPars1.originOffset.r.x = 0;
+// 	segArcPars1.originOffset.r.y = 0;
+// 	segArcPars1.originOffset.r.z = 0;
+// 	segArcPars1.originOffset.t.x = 0;
+// 	segArcPars1.originOffset.t.y = 0;
+// 	segArcPars1.originOffset.t.z = 0;
 
-	segArcPars2.plane = ROCKS_PLANE_ZX;
-	segArcPars2.center[0] = segLinePars2.endPos[0];
-	segArcPars2.center[1] = segLinePars2.endPos[1] + 2;
-	segArcPars2.endPos[0] = segLinePars2.endPos[0] - 2;
-	segArcPars2.endPos[1] = segLinePars2.endPos[1] + 2;
-	segArcPars2.endVelocity = TCP_SPEED;
-	segArcPars2.maxAcceleration = TCP_ACC ;
-	segArcPars2.positiveAngle = TRUE;
+	segLinePars2.plane = ROCKS_PLANE_XY;
+	segLinePars2.endPos[0] = segLinePars1.endPos[0] - 20;
+	segLinePars2.endPos[1] = segLinePars1.endPos[1];
+	segLinePars2.endVelocity = 0;
+	segLinePars2.maxAcceleration = TCP_ACC; 
 
-	segLinePars3.plane = ROCKS_PLANE_ZX;
-	segLinePars3.endPos[0] = segArcPars2.endPos[0];
-	segLinePars3.endPos[1] = segArcPars2.endPos[1] + 20;
-	segLinePars3.endVelocity = TCP_SPEED;
-	segLinePars3.maxAcceleration = TCP_ACC ;
-
-	segArcPars3.plane = ROCKS_PLANE_ZX;
-	segArcPars3.center[0] = segLinePars3.endPos[0] + 2;
-	segArcPars3.center[1] = segLinePars3.endPos[1];
-	segArcPars3.endPos[0] = segLinePars3.endPos[0] + 2;
-	segArcPars3.endPos[1] = segLinePars3.endPos[1] + 2;
-	segArcPars3.endVelocity = TCP_SPEED;
-	segArcPars3.maxAcceleration = TCP_ACC ;
-	segArcPars3.positiveAngle = TRUE;
-
-	segLinePars4.plane = ROCKS_PLANE_ZX;
-	segLinePars4.endPos[0] = segArcPars3.endPos[0] + 20;
-	segLinePars4.endPos[1] = segArcPars3.endPos[1];
-	segLinePars4.endVelocity = TCP_SPEED;
-	segLinePars4.maxAcceleration = TCP_ACC ;
-
-	segArcPars4.plane = ROCKS_PLANE_ZX;
-	segArcPars4.center[0] = segLinePars4.endPos[0];
-	segArcPars4.center[1] = segLinePars4.endPos[1] - 2;
-	segArcPars4.endPos[0] = segLinePars4.endPos[0] + 2;
-	segArcPars4.endPos[1] = segLinePars4.endPos[1] - 2;
-	segArcPars4.endVelocity = TCP_SPEED;
-	segArcPars4.maxAcceleration = TCP_ACC ;
-	segArcPars4.positiveAngle = TRUE;
-
-	segLinePars5.plane = ROCKS_PLANE_ZX;
-	segLinePars5.endPos[0] = segArcPars4.endPos[0];
-	segLinePars5.endPos[1] = segArcPars4.endPos[1] - 10;
-	segLinePars5.endVelocity = 0;
-	segLinePars5.maxAcceleration = TCP_ACC ;
+// 	segArcPars2.plane = ROCKS_PLANE_ZX;
+// 	segArcPars2.center[0] = segLinePars2.endPos[0];
+// 	segArcPars2.center[1] = segLinePars2.endPos[1] + 2;
+// 	segArcPars2.endPos[0] = segLinePars2.endPos[0] - 2;
+// 	segArcPars2.endPos[1] = segLinePars2.endPos[1] + 2;
+// 	segArcPars2.endVelocity = TCP_SPEED;
+// 	segArcPars2.maxAcceleration = TCP_ACC ;
+// 	segArcPars2.positiveAngle = TRUE;
+// 
+// 	segLinePars3.plane = ROCKS_PLANE_ZX;
+// 	segLinePars3.endPos[0] = segArcPars2.endPos[0];
+// 	segLinePars3.endPos[1] = segArcPars2.endPos[1] + 20;
+// 	segLinePars3.endVelocity = TCP_SPEED;
+// 	segLinePars3.maxAcceleration = TCP_ACC ;
+// 
+// 	segArcPars3.plane = ROCKS_PLANE_ZX;
+// 	segArcPars3.center[0] = segLinePars3.endPos[0] + 2;
+// 	segArcPars3.center[1] = segLinePars3.endPos[1];
+// 	segArcPars3.endPos[0] = segLinePars3.endPos[0] + 2;
+// 	segArcPars3.endPos[1] = segLinePars3.endPos[1] + 2;
+// 	segArcPars3.endVelocity = TCP_SPEED;
+// 	segArcPars3.maxAcceleration = TCP_ACC ;
+// 	segArcPars3.positiveAngle = TRUE;
+// 
+// 	segLinePars4.plane = ROCKS_PLANE_ZX;
+// 	segLinePars4.endPos[0] = segArcPars3.endPos[0] + 20;
+// 	segLinePars4.endPos[1] = segArcPars3.endPos[1];
+// 	segLinePars4.endVelocity = TCP_SPEED;
+// 	segLinePars4.maxAcceleration = TCP_ACC ;
+// 
+// 	segArcPars4.plane = ROCKS_PLANE_ZX;
+// 	segArcPars4.center[0] = segLinePars4.endPos[0];
+// 	segArcPars4.center[1] = segLinePars4.endPos[1] - 2;
+// 	segArcPars4.endPos[0] = segLinePars4.endPos[0] + 2;
+// 	segArcPars4.endPos[1] = segLinePars4.endPos[1] - 2;
+// 	segArcPars4.endVelocity = TCP_SPEED;
+// 	segArcPars4.maxAcceleration = TCP_ACC ;
+// 	segArcPars4.positiveAngle = TRUE;
+// 
+// 	segLinePars5.plane = ROCKS_PLANE_ZX;
+// 	segLinePars5.endPos[0] = segArcPars4.endPos[0];
+// 	segLinePars5.endPos[1] = segArcPars4.endPos[1] - 10;
+// 	segLinePars5.endVelocity = 0;
+// 	segLinePars5.maxAcceleration = TCP_ACC ;
 
 	// Define the transition matrix 
 	// -----------------
@@ -915,6 +1000,8 @@ void StateHandle()
 			HandleError("Host");
 		}
 		printf("End.\n");
+
+		programState = 1;
 		break; //case 4
 
 	case 5://自动开关
@@ -944,7 +1031,9 @@ void StateHandle()
 		RocksPathHandle();
 		programState = 1;
 		break;
-
+	case 9://移动到准备位置
+		programState = 1;
+		break;
 	default:
 		break;
 	}
@@ -972,5 +1061,12 @@ int _tmain(int argc, char* argv[])
 	Drawer drawer(target, coordinate, StateHandle, &programState);
 	pDrawer = &drawer;
 	drawer.StartUp(argc, argv);
+
+// 	programState = 0;
+// 	StateHandle();
+// 	programState = 5;
+// 	StateHandle();
+// 
+// 	system("pause");
 	return 0;
 }
