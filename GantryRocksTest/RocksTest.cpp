@@ -262,141 +262,201 @@ void Yaw(double *pVector, double angle)
 	pVector[0] =  buf;
 }
 
+void ConvertCriclePath(double *pStartPos, double &totalAngle, double &CurrentDistance, double &CurrentVelocity, ROCKS_PLANE &plane, double &radius, double *pCenter, ROCKS_POSE *pose, double *pPosition, double *pVelocity)
+{
+	double angle;
+	double alhpa;
+	double beta ;
+	double CenterWorldCoordinate[3];
+	switch(plane)
+	{
+	case ROCKS_PLANE_XY:
+		//这个只需计算一次！！！
+		alhpa = acos((pStartPos[0] - pCenter[0]) / sqrt((pStartPos[0] - pCenter[0]) * (pStartPos[0] - pCenter[0]) + (pStartPos[1] - pCenter[1]) * (pStartPos[1] - pCenter[1])));
+		beta = pCenter[1] < 0 ? alhpa : M_PI * 2 - alhpa;
+
+		if (totalAngle > 0)
+			angle = beta - CurrentDistance / radius;
+		else
+			angle = beta + CurrentDistance / radius;
+
+		CenterWorldCoordinate[0] = pCenter[0];
+		CenterWorldCoordinate[1] = pCenter[1];
+		CenterWorldCoordinate[2] = pStartPos[2];
+
+		pPosition[0] = CenterWorldCoordinate[0] + radius * cos(angle);
+		pPosition[1] = CenterWorldCoordinate[1] + radius * sin(angle);
+		pPosition[2] = CenterWorldCoordinate[2];
+
+		if (totalAngle > 0)
+		{
+			pVelocity[0] =  CurrentVelocity * sin(angle);
+			pVelocity[1] = -CurrentVelocity * cos(angle);
+			pVelocity[2] =  0;
+		}
+		else
+		{
+			pVelocity[0] = -CurrentVelocity * sin(angle);
+			pVelocity[1] =  CurrentVelocity * cos(angle);
+			pVelocity[2] =  0;
+		}
+		break;
+	case ROCKS_PLANE_YZ:
+		alhpa = acos((pStartPos[1] - pCenter[0]) / sqrt((pStartPos[1] - pCenter[0]) * (pStartPos[1] - pCenter[0]) + (pStartPos[2] - pCenter[1]) * (pStartPos[2] - pCenter[1])));
+		beta = pCenter[1] < 0 ? alhpa : M_PI * 2 - alhpa;
+		if (totalAngle > 0)
+			angle = beta - CurrentDistance / radius;
+		else
+			angle = beta + CurrentDistance / radius;
+
+		CenterWorldCoordinate[0] = pStartPos[0];
+		CenterWorldCoordinate[1] = pCenter[0];
+		CenterWorldCoordinate[2] = pCenter[1];
+
+		pPosition[0] = CenterWorldCoordinate[0];
+		pPosition[1] = CenterWorldCoordinate[1] + radius * cos(angle);
+		pPosition[2] = CenterWorldCoordinate[2] + radius * sin(angle);
+
+		if (totalAngle > 0)
+		{
+			pVelocity[0] =  0;
+			pVelocity[1] =  CurrentVelocity * sin(angle);
+			pVelocity[2] = -CurrentVelocity * cos(angle);
+		}
+		else
+		{
+			pVelocity[0] =  0;
+			pVelocity[1] = -CurrentVelocity * sin(angle);
+			pVelocity[2] =  CurrentVelocity * cos(angle);
+		} 
+		break;
+	case ROCKS_PLANE_ZX:
+		alhpa = acos((pStartPos[2] - pCenter[0]) / sqrt((pStartPos[2] - pCenter[0]) * (pStartPos[2] - pCenter[0]) + (pStartPos[0] - pCenter[1]) * (pStartPos[0] - pCenter[1])));
+		beta = pCenter[1] < 0 ? alhpa : M_PI * 2 - alhpa;
+		if (totalAngle > 0)
+			angle = beta - CurrentDistance / radius;
+		else
+			angle = beta + CurrentDistance / radius;
+
+		CenterWorldCoordinate[0] = pCenter[1];
+		CenterWorldCoordinate[1] = pStartPos[1];
+		CenterWorldCoordinate[2] = pCenter[0];
+
+		pPosition[0] = CenterWorldCoordinate[0] + radius * sin(angle);
+		pPosition[1] = CenterWorldCoordinate[1];
+		pPosition[2] = CenterWorldCoordinate[2] + radius * cos(angle);
+
+		if (totalAngle > 0)
+		{
+			pVelocity[0] = -CurrentVelocity * cos(angle);
+			pVelocity[1] =  0;
+			pVelocity[2] =  CurrentVelocity * sin(angle);
+		}
+		else
+		{
+			pVelocity[0] =  CurrentVelocity * cos(angle);
+			pVelocity[1] =  0;
+			pVelocity[2] = -CurrentVelocity * sin(angle);
+		}
+		break;
+	}
+
+	if (pose != nullptr)
+	{
+		if (pose->r.x)
+		{
+			Roll(pPosition, pose->r.x);
+			Roll(pVelocity, pose->r.x);
+		}
+
+		if (pose->r.y)
+		{
+			Pitch(pPosition, pose->r.y);
+			Pitch(pVelocity, pose->r.y);
+		}
+
+		if (pose->r.z)
+		{
+			Yaw(pPosition, pose->r.z);
+			Yaw(pVelocity, pose->r.z);
+		}
+
+		pPosition[0] += pose->t.x;
+		pPosition[1] += pose->t.y;
+		pPosition[2] += pose->t.z;
+	}
+}
+
+void ConverLinePath(double *pStartPos, double *pEndPos, double &totalDistance, double &CurrentDistance, double &CurrentVelocity, ROCKS_PLANE *plane, ROCKS_POSE *pose, double *pPosition, double *pVelocity)
+{
+	if (plane == nullptr)
+	{
+		double rate_x = (pEndPos[0] - pStartPos[0]) / totalDistance;
+		double rate_y = (pEndPos[1] - pStartPos[1]) / totalDistance;
+		double rate_z = (pEndPos[2] - pStartPos[2]) / totalDistance;
+
+		pPosition[0] = CurrentDistance * rate_x + pStartPos[0];
+		pPosition[1] = CurrentDistance * rate_y + pStartPos[1];
+		pPosition[2] = CurrentDistance * rate_z + pStartPos[2];
+
+		pVelocity[0] = CurrentVelocity * rate_x;
+		pVelocity[1] = CurrentVelocity * rate_y;
+		pVelocity[2] = CurrentVelocity * rate_z;
+	}
+	else
+		switch(*plane)
+		{
+		case ROCKS_PLANE_XY:
+			break;
+		case ROCKS_PLANE_YZ:
+			break;
+		case ROCKS_PLANE_ZX:
+			break;
+		default:
+			break;
+		}
+
+	if (pose != nullptr)
+	{
+		if (pose->r.x)
+		{
+			Roll(pPosition, pose->r.x);
+			Roll(pVelocity, pose->r.x);
+		}
+
+		if (pose->r.y)
+		{
+			Pitch(pPosition, pose->r.y);
+			Pitch(pVelocity, pose->r.y);
+		}
+
+		if (pose->r.z)
+		{
+			Yaw(pPosition, pose->r.z);
+			Yaw(pVelocity, pose->r.z);
+		}
+
+		pPosition[0] += pose->t.x;
+		pPosition[1] += pose->t.y;
+		pPosition[2] += pose->t.z;
+	}
+}
+
 void DeltaPath2WorldCoordinate(ROCKS_MECH* pMech, uint32_t index, double *pPosition, double *pVelocity)
 {
 	if (pMech->var.moveType == ROCKS_MOVE_TYPE_CIRCULAR)//check the path type
 	{
-// 		double alhpa = acos(-pMech->var.center[0] / sqrt(pMech->var.center[0] * pMech->var.center[0] + pMech->var.center[1] * pMech->var.center[1]));
-// 		double beta = pMech->var.center[1] < 0 ? alhpa : M_PI * 2 - alhpa;
-// 		double angle;
-// 		if (pMech->var.angle > 0)
-// 			angle = beta - pMech->var.pPositionSplineBuffer[index] / pMech->var.radius;
-// 		else
-// 			angle = beta + pMech->var.pPositionSplineBuffer[index] / pMech->var.radius;
-
-		double angle;
-		double alhpa;
-		double beta ;
-		double CenterWorldCoordinate[3];
-		switch(pMech->var.plane)
-		{
-		case ROCKS_PLANE_XY:
-// 			CenterWorldCoordinate[0] = pMech->var.startPos[0] + pMech->var.center[0];
-// 			CenterWorldCoordinate[1] = pMech->var.startPos[1] + pMech->var.center[1];
-// 			CenterWorldCoordinate[2] = pMech->var.startPos[2];
-
-			//这个只需计算一次！！！
-			alhpa = acos((pMech->var.startPos[0] - pMech->var.center[0]) / sqrt((pMech->var.startPos[0] - pMech->var.center[0]) * (pMech->var.startPos[0] - pMech->var.center[0]) + (pMech->var.startPos[1] - pMech->var.center[1]) * (pMech->var.startPos[1] - pMech->var.center[1])));
-			beta = pMech->var.center[1] < 0 ? alhpa : M_PI * 2 - alhpa;
-
-			if (pMech->var.angle > 0)
-				angle = beta - pMech->var.pPositionSplineBuffer[index] / pMech->var.radius;
-			else
-				angle = beta + pMech->var.pPositionSplineBuffer[index] / pMech->var.radius;
-
-			CenterWorldCoordinate[0] = pMech->var.center[0];
-			CenterWorldCoordinate[1] = pMech->var.center[1];
-			CenterWorldCoordinate[2] = pMech->var.startPos[2];
-
-			pPosition[0] = CenterWorldCoordinate[0] + pMech->var.radius * cos(angle);
-			pPosition[1] = CenterWorldCoordinate[1] + pMech->var.radius * sin(angle);
-			pPosition[2] = CenterWorldCoordinate[2];
-
-			if (pMech->var.angle > 0)
-			{
-				pVelocity[0] =  pMech->var.pVelocitySplineBuffer[index] * sin(angle);
-				pVelocity[1] = -pMech->var.pVelocitySplineBuffer[index] * cos(angle);
-				pVelocity[2] =  0;
-			}
-			else
-			{
-				pVelocity[0] = -pMech->var.pVelocitySplineBuffer[index] * sin(angle);
-				pVelocity[1] =  pMech->var.pVelocitySplineBuffer[index] * cos(angle);
-				pVelocity[2] =  0;
-			}
-			break;
-		case ROCKS_PLANE_YZ:
-// 			CenterWorldCoordinate[0] = pMech->var.startPos[0];
-// 			CenterWorldCoordinate[1] = pMech->var.startPos[1] + pMech->var.center[0];
-// 			CenterWorldCoordinate[2] = pMech->var.startPos[2] + pMech->var.center[1];
-
-			alhpa = acos((pMech->var.startPos[1] - pMech->var.center[0]) / sqrt((pMech->var.startPos[1] - pMech->var.center[0]) * (pMech->var.startPos[1] - pMech->var.center[0]) + (pMech->var.startPos[2] - pMech->var.center[1]) * (pMech->var.startPos[2] - pMech->var.center[1])));
-			beta = pMech->var.center[1] < 0 ? alhpa : M_PI * 2 - alhpa;
-			if (pMech->var.angle > 0)
-				angle = beta - pMech->var.pPositionSplineBuffer[index] / pMech->var.radius;
-			else
-				angle = beta + pMech->var.pPositionSplineBuffer[index] / pMech->var.radius;
-
-			CenterWorldCoordinate[0] = pMech->var.startPos[0];
-			CenterWorldCoordinate[1] = pMech->var.center[0];
-			CenterWorldCoordinate[2] = pMech->var.center[1];
-
-			pPosition[0] = CenterWorldCoordinate[0];
-			pPosition[1] = CenterWorldCoordinate[1] + pMech->var.radius * cos(angle);
-			pPosition[2] = CenterWorldCoordinate[2] + pMech->var.radius * sin(angle);
-
-			if (pMech->var.angle > 0)
-			{
-				pVelocity[0] =  0;
-				pVelocity[1] =  pMech->var.pVelocitySplineBuffer[index] * sin(angle);
-				pVelocity[2] = -pMech->var.pVelocitySplineBuffer[index] * cos(angle);
-			}
-			else
-			{
-				pVelocity[0] =  0;
-				pVelocity[1] = -pMech->var.pVelocitySplineBuffer[index] * sin(angle);
-				pVelocity[2] =  pMech->var.pVelocitySplineBuffer[index] * cos(angle);
-			} 
-			break;
-		case ROCKS_PLANE_ZX:
-// 			CenterWorldCoordinate[0] = pMech->var.startPos[0] + pMech->var.center[1];
-// 			CenterWorldCoordinate[1] = pMech->var.startPos[1];
-// 			CenterWorldCoordinate[2] = pMech->var.startPos[2] + pMech->var.center[0];
-
-			alhpa = acos((pMech->var.startPos[2] - pMech->var.center[0]) / sqrt((pMech->var.startPos[2] - pMech->var.center[0]) * (pMech->var.startPos[2] - pMech->var.center[0]) + (pMech->var.startPos[0] - pMech->var.center[1]) * (pMech->var.startPos[0] - pMech->var.center[1])));
-			beta = pMech->var.center[1] < 0 ? alhpa : M_PI * 2 - alhpa;
-			if (pMech->var.angle > 0)
-				angle = beta - pMech->var.pPositionSplineBuffer[index] / pMech->var.radius;
-			else
-				angle = beta + pMech->var.pPositionSplineBuffer[index] / pMech->var.radius;
-
-			CenterWorldCoordinate[0] = pMech->var.center[1];
-			CenterWorldCoordinate[1] = pMech->var.startPos[1];
-			CenterWorldCoordinate[2] = pMech->var.center[0];
-
-			pPosition[0] = CenterWorldCoordinate[0] + pMech->var.radius * sin(angle);
-			pPosition[1] = CenterWorldCoordinate[1];
-			pPosition[2] = CenterWorldCoordinate[2] + pMech->var.radius * cos(angle);
-
-			if (pMech->var.angle > 0)
-			{
-				pVelocity[0] = -pMech->var.pVelocitySplineBuffer[index] * cos(angle);
-				pVelocity[1] =  0;
-				pVelocity[2] =  pMech->var.pVelocitySplineBuffer[index] * sin(angle);
-			}
-			else
-			{
-				pVelocity[0] =  pMech->var.pVelocitySplineBuffer[index] * cos(angle);
-				pVelocity[1] = 0;
-				pVelocity[2] = -pMech->var.pVelocitySplineBuffer[index] * sin(angle);
-			}
-			break;
-		}
+		ConvertCriclePath(pMech->var.startPos, pMech->var.angle, pMech->var.pPositionSplineBuffer[index], pMech->var.pVelocitySplineBuffer[index],pMech->var.plane, pMech->var.radius, pMech->var.center, nullptr, pPosition, pVelocity);
 	} 
+
 	if (pMech->var.moveType == ROCKS_MOVE_TYPE_LINEAR)
 	{
-		double distance = m_mech.var.pPositionSplineBuffer[m_mech.var.usedNrOfSplines - 1];
-		double rate_x = (m_mech.var.endPos[0] - m_mech.var.startPos[0]) /  m_mech.var.pPositionSplineBuffer[m_mech.var.usedNrOfSplines - 1];
-		double rate_y = (m_mech.var.endPos[1] - m_mech.var.startPos[1]) /  m_mech.var.pPositionSplineBuffer[m_mech.var.usedNrOfSplines - 1];
-		double rate_z = (m_mech.var.endPos[2] - m_mech.var.startPos[2]) /  m_mech.var.pPositionSplineBuffer[m_mech.var.usedNrOfSplines - 1];
+		ConverLinePath(pMech->var.startPos, pMech->var.endPos, pMech->var.pPositionSplineBuffer[pMech->var.usedNrOfSplines - 1], pMech->var.pPositionSplineBuffer[index],pMech->var.pVelocitySplineBuffer[index], nullptr, nullptr, pPosition, pVelocity);
+	}
 
-		pPosition[0] = pMech->var.pPositionSplineBuffer[index] * rate_x + m_mech.var.startPos[0];
-		pPosition[1] = pMech->var.pPositionSplineBuffer[index] * rate_y + m_mech.var.startPos[1];
-		pPosition[2] = pMech->var.pPositionSplineBuffer[index] * rate_z + m_mech.var.startPos[2];
+	if (pMech->var.moveType == ROCKS_MOVE_TYPE_MIX)
+	{
 
-		pVelocity[0] = pMech->var.pVelocitySplineBuffer[index] * rate_x;
-		pVelocity[1] = pMech->var.pVelocitySplineBuffer[index] * rate_y;
-		pVelocity[2] = pMech->var.pVelocitySplineBuffer[index] * rate_z;
 	}
 
 	if (pMech->var.refFramePose2.r.x)
@@ -699,19 +759,13 @@ BOOL Rocks(void)
 	segStartPars.pPositionSplineBuffer = NULL;
 	segStartPars.pVelocitySplineBuffer = NULL;
 	
-	segLinePars1.plane = ROCKS_PLANE_XY;
-	segLinePars1.endPos[0] = sineAccPars.startPos[0] - 30;
-	segLinePars1.endPos[1] = sineAccPars.startPos[1];
+	segLinePars1.plane = ROCKS_PLANE_ZX;
+	segLinePars1.endPos[0] = segStartPars.startPos[0] - 30;
+	segLinePars1.endPos[1] = segStartPars.startPos[1];
 	segLinePars1.endVelocity = TCP_SPEED;
 	segLinePars1.maxAcceleration = TCP_ACC ;
-	segLinePars1.originOffset.r.x = 0;
-	segLinePars1.originOffset.r.y = 0;
-	segLinePars1.originOffset.r.z = 0;
-	segLinePars1.originOffset.t.x = 0;
-	segLinePars1.originOffset.t.y = 0;
-	segLinePars1.originOffset.t.z = 0;
 
-	segArcPars1.plane = ROCKS_PLANE_XY;
+	segArcPars1.plane = ROCKS_PLANE_ZX;
 	segArcPars1.center[0] = segLinePars1.endPos[0];
 	segArcPars1.center[1] = segLinePars1.endPos[1] - 10;
 	segArcPars1.endPos[0] = segLinePars1.endPos[0] - 10;
@@ -726,56 +780,56 @@ BOOL Rocks(void)
 	segArcPars1.originOffset.t.y = 0;
 	segArcPars1.originOffset.t.z = 0;
 
-// 	segLinePars2.plane = ROCKS_PLANE_ZX;
-// 	segLinePars2.endPos[0] = segArcPars1.endPos[0] - 20;
-// 	segLinePars2.endPos[1] = segArcPars1.endPos[1];
-// 	segLinePars2.endVelocity = TCP_SPEED;
-// 	segLinePars2.maxAcceleration = TCP_ACC ;
-// 
-// 	segArcPars2.plane = ROCKS_PLANE_ZX;
-// 	segArcPars2.center[0] = segLinePars2.endPos[0];
-// 	segArcPars2.center[1] = segLinePars2.endPos[1] + 2;
-// 	segArcPars2.endPos[0] = segLinePars2.endPos[0] - 2;
-// 	segArcPars2.endPos[1] = segLinePars2.endPos[1] + 2;
-// 	segArcPars2.endVelocity = TCP_SPEED;
-// 	segArcPars2.maxAcceleration = TCP_ACC ;
-// 	segArcPars2.positiveAngle = TRUE;
-// 
-// 	segLinePars3.plane = ROCKS_PLANE_ZX;
-// 	segLinePars3.endPos[0] = segArcPars2.endPos[0];
-// 	segLinePars3.endPos[1] = segArcPars2.endPos[1] + 20;
-// 	segLinePars3.endVelocity = TCP_SPEED;
-// 	segLinePars3.maxAcceleration = TCP_ACC ;
-// 
-// 	segArcPars3.plane = ROCKS_PLANE_ZX;
-// 	segArcPars3.center[0] = segLinePars3.endPos[0] + 2;
-// 	segArcPars3.center[1] = segLinePars3.endPos[1];
-// 	segArcPars3.endPos[0] = segLinePars3.endPos[0] + 2;
-// 	segArcPars3.endPos[1] = segLinePars3.endPos[1] + 2;
-// 	segArcPars3.endVelocity = TCP_SPEED;
-// 	segArcPars3.maxAcceleration = TCP_ACC ;
-// 	segArcPars3.positiveAngle = TRUE;
-// 
-// 	segLinePars4.plane = ROCKS_PLANE_ZX;
-// 	segLinePars4.endPos[0] = segArcPars3.endPos[0] + 20;
-// 	segLinePars4.endPos[1] = segArcPars3.endPos[1];
-// 	segLinePars4.endVelocity = TCP_SPEED;
-// 	segLinePars4.maxAcceleration = TCP_ACC ;
-// 
-// 	segArcPars4.plane = ROCKS_PLANE_ZX;
-// 	segArcPars4.center[0] = segLinePars4.endPos[0];
-// 	segArcPars4.center[1] = segLinePars4.endPos[1] - 2;
-// 	segArcPars4.endPos[0] = segLinePars4.endPos[0] + 2;
-// 	segArcPars4.endPos[1] = segLinePars4.endPos[1] - 2;
-// 	segArcPars4.endVelocity = TCP_SPEED;
-// 	segArcPars4.maxAcceleration = TCP_ACC ;
-// 	segArcPars4.positiveAngle = TRUE;
-// 
-// 	segLinePars5.plane = ROCKS_PLANE_ZX;
-// 	segLinePars5.endPos[0] = segArcPars4.endPos[0];
-// 	segLinePars5.endPos[1] = segArcPars4.endPos[1] - 10;
-// 	segLinePars5.endVelocity = 0;
-// 	segLinePars5.maxAcceleration = TCP_ACC ;
+	segLinePars2.plane = ROCKS_PLANE_ZX;
+	segLinePars2.endPos[0] = segArcPars1.endPos[0] - 20;
+	segLinePars2.endPos[1] = segArcPars1.endPos[1];
+	segLinePars2.endVelocity = TCP_SPEED;
+	segLinePars2.maxAcceleration = TCP_ACC ;
+
+	segArcPars2.plane = ROCKS_PLANE_ZX;
+	segArcPars2.center[0] = segLinePars2.endPos[0];
+	segArcPars2.center[1] = segLinePars2.endPos[1] + 2;
+	segArcPars2.endPos[0] = segLinePars2.endPos[0] - 2;
+	segArcPars2.endPos[1] = segLinePars2.endPos[1] + 2;
+	segArcPars2.endVelocity = TCP_SPEED;
+	segArcPars2.maxAcceleration = TCP_ACC ;
+	segArcPars2.positiveAngle = TRUE;
+
+	segLinePars3.plane = ROCKS_PLANE_ZX;
+	segLinePars3.endPos[0] = segArcPars2.endPos[0];
+	segLinePars3.endPos[1] = segArcPars2.endPos[1] + 20;
+	segLinePars3.endVelocity = TCP_SPEED;
+	segLinePars3.maxAcceleration = TCP_ACC ;
+
+	segArcPars3.plane = ROCKS_PLANE_ZX;
+	segArcPars3.center[0] = segLinePars3.endPos[0] + 2;
+	segArcPars3.center[1] = segLinePars3.endPos[1];
+	segArcPars3.endPos[0] = segLinePars3.endPos[0] + 2;
+	segArcPars3.endPos[1] = segLinePars3.endPos[1] + 2;
+	segArcPars3.endVelocity = TCP_SPEED;
+	segArcPars3.maxAcceleration = TCP_ACC ;
+	segArcPars3.positiveAngle = TRUE;
+
+	segLinePars4.plane = ROCKS_PLANE_ZX;
+	segLinePars4.endPos[0] = segArcPars3.endPos[0] + 20;
+	segLinePars4.endPos[1] = segArcPars3.endPos[1];
+	segLinePars4.endVelocity = TCP_SPEED;
+	segLinePars4.maxAcceleration = TCP_ACC ;
+
+	segArcPars4.plane = ROCKS_PLANE_ZX;
+	segArcPars4.center[0] = segLinePars4.endPos[0];
+	segArcPars4.center[1] = segLinePars4.endPos[1] - 2;
+	segArcPars4.endPos[0] = segLinePars4.endPos[0] + 2;
+	segArcPars4.endPos[1] = segLinePars4.endPos[1] - 2;
+	segArcPars4.endVelocity = TCP_SPEED;
+	segArcPars4.maxAcceleration = TCP_ACC ;
+	segArcPars4.positiveAngle = TRUE;
+
+	segLinePars5.plane = ROCKS_PLANE_ZX;
+	segLinePars5.endPos[0] = segArcPars4.endPos[0];
+	segLinePars5.endPos[1] = segArcPars4.endPos[1] - 10;
+	segLinePars5.endVelocity = 0;
+	segLinePars5.maxAcceleration = TCP_ACC ;
 
 	// Define the transition matrix 
 	// -----------------
