@@ -36,7 +36,7 @@ HANDLE hEvStop;
 HANDLE hAuto;
 
 HANDLE hAutoPathUsing;
-int pathType = 0;
+int pathType = 1;
 
 LONG64 times = 0;
 LONG64 timesCounter = 0;
@@ -52,6 +52,8 @@ ROCKS_TRAJ_SINE_ACC_CIRCLE_PARS sineAccPars;
 ROCKS_TRAJ_SEGMENT_START_PARS segStartPars;
 ROCKS_TRAJ_SEGMENT_LINE_PARS segLinePars1,segLinePars2,segLinePars3,segLinePars4,segLinePars5;
 ROCKS_TRAJ_SEGMENT_ARC_PARS segArcPars1,segArcPars2,segArcPars3,segArcPars4;
+
+double segDistance[10];
 
 void HandleError(const char *name)
 {
@@ -456,7 +458,40 @@ void DeltaPath2WorldCoordinate(ROCKS_MECH* pMech, uint32_t index, double *pPosit
 
 	if (pMech->var.moveType == ROCKS_MOVE_TYPE_MIX)
 	{
-
+		if (pMech->var.pPositionSplineBuffer[index] <= segDistance[0])
+		{
+			ConverLinePath(pMech->var.startPos, segLinePars1.endPos, segDistance[0], pMech->var.pPositionSplineBuffer[index],pMech->var.pVelocitySplineBuffer[index], &segLinePars1.plane, &segLinePars1.originOffset, pPosition, pVelocity);
+		}
+		if (pMech->var.pPositionSplineBuffer[index] <= segDistance[0] + segDistance[1])
+		{
+			double angle = M_PI_2;
+			double radius = 5;
+			ConvertCriclePath(segLinePars1.endPos,angle, pMech->var.pPositionSplineBuffer[index], pMech->var.pVelocitySplineBuffer[index],segArcPars1.plane, radius, segArcPars1.center, &segArcPars1.originOffset, pPosition, pVelocity);
+		}
+		if (pMech->var.pPositionSplineBuffer[index] <= segDistance[0] + segDistance[1] + segDistance[2])
+		{
+			ConverLinePath(segArcPars1.endPos, segLinePars2.endPos, segDistance[2], pMech->var.pPositionSplineBuffer[index],pMech->var.pVelocitySplineBuffer[index], &segLinePars2.plane, &segLinePars2.originOffset, pPosition, pVelocity);
+		}
+		if (pMech->var.pPositionSplineBuffer[index] <= segDistance[0] + segDistance[1] + segDistance[2] + segDistance[3])
+		{
+			double angle = M_PI_2;
+			double radius = 5;
+			ConvertCriclePath(segLinePars2.endPos,angle, pMech->var.pPositionSplineBuffer[index], pMech->var.pVelocitySplineBuffer[index],segArcPars2.plane, radius, segArcPars2.center, &segArcPars2.originOffset, pPosition, pVelocity);
+		}
+		if (pMech->var.pPositionSplineBuffer[index] <= segDistance[0] + segDistance[1] + segDistance[2] + segDistance[3] + segDistance[4])
+		{
+			ConverLinePath(segArcPars2.endPos, segLinePars3.endPos, segDistance[4], pMech->var.pPositionSplineBuffer[index],pMech->var.pVelocitySplineBuffer[index], &segLinePars3.plane, &segLinePars3.originOffset, pPosition, pVelocity);
+		}
+		if (pMech->var.pPositionSplineBuffer[index] <= segDistance[0] + segDistance[1] + segDistance[2] + segDistance[3] + segDistance[4] + segDistance[5])
+		{
+			double angle = M_PI_2;
+			double radius = 5;
+			ConvertCriclePath(segLinePars3.endPos,angle, pMech->var.pPositionSplineBuffer[index], pMech->var.pVelocitySplineBuffer[index],segArcPars3.plane, radius, segArcPars3.center, &segArcPars3.originOffset, pPosition, pVelocity);
+		}
+		if (pMech->var.pPositionSplineBuffer[index] <= segDistance[0] + segDistance[1] + segDistance[2] + segDistance[3] + segDistance[4] + segDistance[5] + segDistance[6])
+		{
+			ConverLinePath(segArcPars3.endPos, segLinePars4.endPos, segDistance[6], pMech->var.pPositionSplineBuffer[index],pMech->var.pVelocitySplineBuffer[index], &segLinePars4.plane, &segLinePars4.originOffset, pPosition, pVelocity);
+		}
 	}
 
 	if (pMech->var.refFramePose2.r.x)
@@ -660,7 +695,7 @@ void RocksPathHandle()
 	ReleaseMutex(hAutoPathUsing);
 }
 
-const double TCP_SPEED = 500;
+const double TCP_SPEED = 100;
 const double TCP_ACC = 10000;
 const double SPLINE_TIME = 0.001;
 
@@ -760,76 +795,84 @@ BOOL Rocks(void)
 	segStartPars.pVelocitySplineBuffer = NULL;
 	
 	segLinePars1.plane = ROCKS_PLANE_ZX;
-	segLinePars1.endPos[0] = segStartPars.startPos[0] - 30;
-	segLinePars1.endPos[1] = segStartPars.startPos[1];
+	segLinePars1.endPos[0] = segStartPars.startPos[0];
+	segLinePars1.endPos[1] = segStartPars.startPos[2] - 20;
 	segLinePars1.endVelocity = TCP_SPEED;
-	segLinePars1.maxAcceleration = TCP_ACC ;
+	segLinePars1.maxAcceleration = TCP_ACC;
+
+	segDistance[0] = 20;
 
 	segArcPars1.plane = ROCKS_PLANE_ZX;
-	segArcPars1.center[0] = segLinePars1.endPos[0];
-	segArcPars1.center[1] = segLinePars1.endPos[1] - 10;
-	segArcPars1.endPos[0] = segLinePars1.endPos[0] - 10;
-	segArcPars1.endPos[1] = segLinePars1.endPos[1] - 10;
-	segArcPars1.endVelocity = 0;
-	segArcPars1.maxAcceleration = TCP_ACC ;
+	segArcPars1.center[0] = segLinePars1.endPos[0] - 5;
+	segArcPars1.center[1] = segLinePars1.endPos[1];
+	segArcPars1.endPos[0] = segLinePars1.endPos[0] - 5;
+	segArcPars1.endPos[1] = segLinePars1.endPos[1] - 5;
+	segArcPars1.endVelocity = TCP_SPEED;
+	segArcPars1.maxAcceleration = TCP_ACC;
 	segArcPars1.positiveAngle = TRUE;
-	segArcPars1.originOffset.r.x = 0;
-	segArcPars1.originOffset.r.y = 0;
-	segArcPars1.originOffset.r.z = 0;
-	segArcPars1.originOffset.t.x = 0;
-	segArcPars1.originOffset.t.y = 0;
-	segArcPars1.originOffset.t.z = 0;
+
+	segDistance[1] = 2.5 * M_PI;
 
 	segLinePars2.plane = ROCKS_PLANE_ZX;
-	segLinePars2.endPos[0] = segArcPars1.endPos[0] - 20;
+	segLinePars2.endPos[0] = segArcPars1.endPos[0] - 100;
 	segLinePars2.endPos[1] = segArcPars1.endPos[1];
 	segLinePars2.endVelocity = TCP_SPEED;
-	segLinePars2.maxAcceleration = TCP_ACC ;
+	segLinePars2.maxAcceleration = TCP_ACC;
+
+	segDistance[2] = 100;
 
 	segArcPars2.plane = ROCKS_PLANE_ZX;
-	segArcPars2.center[0] = segLinePars2.endPos[0];
-	segArcPars2.center[1] = segLinePars2.endPos[1] + 2;
-	segArcPars2.endPos[0] = segLinePars2.endPos[0] - 2;
-	segArcPars2.endPos[1] = segLinePars2.endPos[1] + 2;
+	segArcPars2.center[0] = segLinePars2.endPos[0] ;
+	segArcPars2.center[1] = segLinePars2.endPos[1] + 5;
+	segArcPars2.endPos[0] = segLinePars2.endPos[0] - 5;
+	segArcPars2.endPos[1] = segLinePars2.endPos[1] + 5;
 	segArcPars2.endVelocity = TCP_SPEED;
-	segArcPars2.maxAcceleration = TCP_ACC ;
+	segArcPars2.maxAcceleration = TCP_ACC;
 	segArcPars2.positiveAngle = TRUE;
+
+	segDistance[3] = 2.5 * M_PI;
 
 	segLinePars3.plane = ROCKS_PLANE_ZX;
 	segLinePars3.endPos[0] = segArcPars2.endPos[0];
 	segLinePars3.endPos[1] = segArcPars2.endPos[1] + 20;
 	segLinePars3.endVelocity = TCP_SPEED;
-	segLinePars3.maxAcceleration = TCP_ACC ;
+	segLinePars3.maxAcceleration = TCP_ACC;
+
+	segDistance[4] = 20;
 
 	segArcPars3.plane = ROCKS_PLANE_ZX;
-	segArcPars3.center[0] = segLinePars3.endPos[0] + 2;
+	segArcPars3.center[0] = segLinePars3.endPos[0] + 5;
 	segArcPars3.center[1] = segLinePars3.endPos[1];
-	segArcPars3.endPos[0] = segLinePars3.endPos[0] + 2;
-	segArcPars3.endPos[1] = segLinePars3.endPos[1] + 2;
+	segArcPars3.endPos[0] = segLinePars3.endPos[0] + 5;
+	segArcPars3.endPos[1] = segLinePars3.endPos[1] + 5;
 	segArcPars3.endVelocity = TCP_SPEED;
-	segArcPars3.maxAcceleration = TCP_ACC ;
+	segArcPars3.maxAcceleration = TCP_ACC;
 	segArcPars3.positiveAngle = TRUE;
 
+	segDistance[5] = 2.5 * M_PI;
+
 	segLinePars4.plane = ROCKS_PLANE_ZX;
-	segLinePars4.endPos[0] = segArcPars3.endPos[0] + 20;
+	segLinePars4.endPos[0] = segArcPars3.endPos[0] + 105;
 	segLinePars4.endPos[1] = segArcPars3.endPos[1];
-	segLinePars4.endVelocity = TCP_SPEED;
-	segLinePars4.maxAcceleration = TCP_ACC ;
+	segLinePars4.endVelocity = 0;
+	segLinePars4.maxAcceleration = TCP_ACC;
 
-	segArcPars4.plane = ROCKS_PLANE_ZX;
-	segArcPars4.center[0] = segLinePars4.endPos[0];
-	segArcPars4.center[1] = segLinePars4.endPos[1] - 2;
-	segArcPars4.endPos[0] = segLinePars4.endPos[0] + 2;
-	segArcPars4.endPos[1] = segLinePars4.endPos[1] - 2;
-	segArcPars4.endVelocity = TCP_SPEED;
-	segArcPars4.maxAcceleration = TCP_ACC ;
-	segArcPars4.positiveAngle = TRUE;
+	segDistance[6] = 105;
 
-	segLinePars5.plane = ROCKS_PLANE_ZX;
-	segLinePars5.endPos[0] = segArcPars4.endPos[0];
-	segLinePars5.endPos[1] = segArcPars4.endPos[1] - 10;
-	segLinePars5.endVelocity = 0;
-	segLinePars5.maxAcceleration = TCP_ACC ;
+// 	segArcPars4.plane = ROCKS_PLANE_ZX;
+// 	segArcPars4.center[0] = segLinePars4.endPos[0];
+// 	segArcPars4.center[1] = segLinePars4.endPos[1] - 2;
+// 	segArcPars4.endPos[0] = segLinePars4.endPos[0] + 2;
+// 	segArcPars4.endPos[1] = segLinePars4.endPos[1] - 2;
+// 	segArcPars4.endVelocity = TCP_SPEED;
+// 	segArcPars4.maxAcceleration = TCP_ACC;
+// 	segArcPars4.positiveAngle = TRUE;
+// 
+// 	segLinePars5.plane = ROCKS_PLANE_ZX;
+// 	segLinePars5.endPos[0] = segArcPars4.endPos[0];
+// 	segLinePars5.endPos[1] = segArcPars4.endPos[1] - 10;
+// 	segLinePars5.endVelocity = 0;
+// 	segLinePars5.maxAcceleration = TCP_ACC;
 
 	// Define the transition matrix 
 	// -----------------
