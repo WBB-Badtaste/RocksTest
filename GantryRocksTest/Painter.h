@@ -6,7 +6,7 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
-#define BUFFER_SIZE 10000
+#define BUFFER_SIZE 1000
 
 class Painter
 {
