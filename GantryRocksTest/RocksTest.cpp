@@ -158,6 +158,7 @@ BOOL InitAxis(void)
 	SAC_SPG_STATE sacSpgState;
 	SAC_STATE sacState;
 	SAC_CONFIGURE_AXIS_PARS axisPars;
+	double signal = 0;
 	nyceStatus = NYCE_OK;
 	for (ax = 0; ax < NUM_AXES; ax++ )
 	{
@@ -176,30 +177,48 @@ BOOL InitAxis(void)
 			case SAC_IDLE:
 				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacInitialize( axId[ ax ], SAC_USE_FLASH );
 				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacSynchronize( axId[ ax ], SAC_REQ_INITIALIZE, 10 );
-				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacGetAxisConfiguration( axId[ ax ], &axisPars );
-		
-		
-			case SAC_FREE:
 
-				//回零是危险操作，若回零会使单轴运动则要禁止
-				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacHome( axId[ ax ] );
+				goto INACTIVE;
+
+			case SAC_ERROR:
+				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacReset(axId[ ax ]);
+				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacSynchronize(axId[ ax ], SAC_REQ_RESET,10);
+
+			case SAC_INACTIVE:
+INACTIVE:		nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacHome( axId[ ax ] );
 				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacSynchronize( axId[ ax ], SAC_REQ_HOMING_COMPLETED, 10 );
 
-		
-				if ( NyceSuccess(nyceStatus) && axisPars.motorType == SAC_BRUSHLESS_AC_MOTOR )
+				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacGetAxisConfiguration( axId[ ax ], &axisPars );
+
+				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacReadVariable(axId[ ax ], SAC_VAR_BLAC_ALIGNED, &signal);
+				if (signal == 0)
 				{
-					nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacAlignMotor( axId[ ax ] );
-					nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacSynchronize( axId[ ax ], SAC_REQ_ALIGN_MOTOR, 10 );
+					if ( NyceSuccess(nyceStatus) && axisPars.motorType == SAC_BRUSHLESS_AC_MOTOR )
+					{
+						nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacAlignMotor( axId[ ax ] );
+						nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacSynchronize( axId[ ax ], SAC_REQ_ALIGN_MOTOR, 10 );
+					}
 				}
+
+			case SAC_FREE:
 
 				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacLock( axId[ ax ] );
 				nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacSynchronize( axId[ ax ], SAC_REQ_LOCK, 10 );
-		
+
 				break;
-	// 		case SAC_MOVING:
-	// 			printf("Waiting the motion stop...");
-	// 			nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacSynchronize( axId[ ax ], SAC_REQ_MOTION_STOPPED, 30 );
-	// 			break;
+			case SAC_READY:
+				//回零是危险操作，若回零会使单轴运动则要禁止
+				// 				nyceStatus =  NyceError(nyceStatus) ? nyceStatus :SacReadVariable(axId[ ax ], SAC_VAR_HOMED, &signal);
+				// 				if (signal == 0)
+				// 				{
+				// 					nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacHome( axId[ ax ] );
+				// 					nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacSynchronize( axId[ ax ], SAC_REQ_HOMING_COMPLETED, 10 );
+				// 				}
+				break;
+				// 		case SAC_MOVING:
+				// 			printf("Waiting the motion stop...");
+				// 			nyceStatus =  NyceError(nyceStatus) ? nyceStatus : SacSynchronize( axId[ ax ], SAC_REQ_MOTION_STOPPED, 30 );
+				// 			break;
 			}
 		}
 
