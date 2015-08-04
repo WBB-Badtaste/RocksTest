@@ -35,7 +35,7 @@ HANDLE hEvStop;
 HANDLE hAuto;
 
 HANDLE hAutoPathUsing;
-int pathType = 0;
+int pathType = 1;
 
 LONG64 times = 0;
 LONG64 timesCounter = 0;
@@ -54,10 +54,10 @@ ROCKS_TRAJ_SEGMENT_ARC_PARS segArcPars1,segArcPars2,segArcPars3,segArcPars4;
 
 double segDistance[10];
 
-double position[100000][3];
-double velocity[100000][3];
-
-uint32_t realSegNum = 0;
+// double position[1000000][3];
+// double velocity[1000000][3];
+// 
+// uint32_t realSegNum = 0;
 
 void HandleError(const char *name)
 {
@@ -280,7 +280,7 @@ void Yaw(double *pVector, double angle)
 
 void ConvertCriclePath(ROCKS_PLANE &plane, ROCKS_POSE &pose, double &startPos1, double &startPos2, double &center1, double &center2, double &angle, double &CurrentDistance, double &CurrentVelocity, double *pPosition, double *pVelocity)
 {
-	double radius = sqrt((center1 - startPos1) * (center1 - startPos1) + (center2 - startPos2) * (center2 - startPos2));
+	double radius(sqrt((center1 - startPos1) * (center1 - startPos1) + (center2 - startPos2) * (center2 - startPos2)));
 	double relativeAngle = CurrentDistance / radius;
 	double alhpa = acos((startPos1 - center1) / radius);
 	double beta = (startPos2 - center2) > 0 ? alhpa : - alhpa;
@@ -724,7 +724,7 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 	{
 		pMech->var.pJointPositionBufferC[ax] = (double*)malloc(pMech->var.maxNrOfSplines * sizeof(double));
 		pMech->var.pJointVelocityBufferC[ax] = (double*)malloc(pMech->var.maxNrOfSplines * sizeof(double));
-		if(++ax == pMech->nrOfJoints) 
+		if(++ax == ROCKS_MECH_MAX_NR_OF_JOINTS) 
 		{
 			pMech->var.jointBuffersAllocated = TRUE;
 			pMech->var.pApplyForwardKinFunc = RocksKinForwardDelta;
@@ -736,10 +736,13 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 	double pos_joint_x, pos_joint_y, pos_joint_z;//joint angle(JA)
 	double vel_joint_x, vel_joint_y, vel_joint_z;//joint angular velocity(JAV)
 
-	realSegNum = 0;
+	uint32_t realSegNum = 0;
+	double (*pPosition)[3] = new double[pMech->var.maxNrOfSplines][3];
+	double (*pVelocity)[3] = new double[pMech->var.maxNrOfSplines][3];
+
 	for (uint32_t index = 0; index < pMech->var.usedNrOfSplines; ++index)
 	{
-		DeltaPath2WorldCoordinate(pMech, index, position[realSegNum], velocity[realSegNum]);
+		DeltaPath2WorldCoordinate(pMech, index, pPosition[realSegNum], pVelocity[realSegNum]);
 		realSegNum++;
 	}
 
@@ -747,7 +750,7 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 
 	for(uint32_t index = 0; index < realSegNum; ++index)
 	{
-		if(delta_calcInverse(position[index][0], position[index][1], position[index][2], pos_joint_x, pos_joint_y, pos_joint_z) != 0)
+		if(delta_calcInverse(pPosition[index][0], pPosition[index][1], pPosition[index][2], pos_joint_x, pos_joint_y, pos_joint_z) != 0)
 			return ROCKS_ERR_NO_VALID_PATH;
 
 		//convert the JA to joint position(JP)
@@ -755,7 +758,7 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 		pMech->var.pJointPositionBufferC[1][index] = pos_joint_y * rate_angle2pu;
 		pMech->var.pJointPositionBufferC[2][index] = pos_joint_z * rate_angle2pu;
 
-		if(delta_velInverse(position[index][0], position[index][1], position[index][2], velocity[index][0], velocity[index][1], velocity[index][2], pos_joint_x, pos_joint_y, pos_joint_z, vel_joint_x, vel_joint_y, vel_joint_z) != 0)
+		if(delta_velInverse(pPosition[index][0], pPosition[index][1], pPosition[index][2], pVelocity[index][0], pVelocity[index][1], pVelocity[index][2], pos_joint_x, pos_joint_y, pos_joint_z, vel_joint_x, vel_joint_y, vel_joint_z) != 0)
 			return ROCKS_ERR_NO_VALID_PATH;
 
 		//convert the JAV to joint velocity(JV)
@@ -769,9 +772,12 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 	file<<"|Index|x_pos|y_pos|z_pos|x_vel|y_vel|z_vel|joint1_pos|joint2_pos|joint3_pos|joint1_vel|joint2_vel|joint3_vel|"<<endl<<"|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|"<<endl;
 	for (uint32_t i = 0; i < realSegNum; ++i)
 	{
-		file<<"|"<<i<<"|"<<position[i][0]<<"|"<<position[i][1]<<"|"<<position[i][2]<<"|"<<velocity[i][0]<<"|"<<velocity[i][1]<<"|"<<velocity[i][2]<<"|"<<pMech->var.pJointPositionBufferC[0][i]<<"|"<<pMech->var.pJointPositionBufferC[1][i]<<"|"<<pMech->var.pJointPositionBufferC[2][i]<<"|"<<pMech->var.pJointVelocityBufferC[0][i]<<"|"<<pMech->var.pJointVelocityBufferC[1][i]<<"|"<<pMech->var.pJointVelocityBufferC[2][i]<<"|"<<endl;
+		file<<"|"<<i<<"|"<<pPosition[i][0]<<"|"<<pPosition[i][1]<<"|"<<pPosition[i][2]<<"|"<<pVelocity[i][0]<<"|"<<pVelocity[i][1]<<"|"<<pVelocity[i][2]<<"|"<<pMech->var.pJointPositionBufferC[0][i]<<"|"<<pMech->var.pJointPositionBufferC[1][i]<<"|"<<pMech->var.pJointPositionBufferC[2][i]<<"|"<<pMech->var.pJointVelocityBufferC[0][i]<<"|"<<pMech->var.pJointVelocityBufferC[1][i]<<"|"<<pMech->var.pJointVelocityBufferC[2][i]<<"|"<<endl;
 	}
 	file.close();
+
+	delete []pPosition;
+	delete []pVelocity;
 
 	pMech->var.mechStep = ROCKS_MECH_STEP_VALID_INV_KINEMATICS;
 	return NYCE_OK;
@@ -906,17 +912,17 @@ void RocksPathHandle()
 const double SPLINE_TIME = 0.0002;
 
 const double HOME_SPEED = 300;
-const double HOME_OFFEST_X = 40;
+const double HOME_OFFEST_X = 60;
 const double HOME_OFFEST_Y = 0;
 const double HOME_OFFEST_Z = 20;
 
 const double CRICLE_SPEED = 500;
-const double CRICLE_CENTER_OFFSET_1 = -30;
+const double CRICLE_CENTER_OFFSET_1 = -60;
 const double CRICLE_CENTER_OFFSET_2 = 0;
 const double CRICLE_ANGLE = M_PI * 20;
 const ROCKS_PLANE CRICLE_PLANE = ROCKS_PLANE_XY;
 
-const double DOOR_SPEED = 100;
+const double DOOR_SPEED = 500;
 const double DOOR_HEIGHT = 20;
 const double DOOR_WIDTH = 20;
 const double DOOR_FILLET = 40;
@@ -924,7 +930,7 @@ const double DOOR_FILLET = 40;
 const double OPT_DOOR_POINT_1[3] = {-65,0,-220};
 const double OPT_DOOR_POINT_2[3] = {-25,0,-170};
 const double OPT_DOOR_POINT_3[3] = { 25,0,-170};
-const double OPT_DOOR_POINT_4[3] = { 65,0,-220};														
+const double OPT_DOOR_POINT_4[3] = { 65,0,-220};													
 
 BOOL RocksGotoReadyPosition()
 {
@@ -1034,7 +1040,7 @@ BOOL Rocks(void)
 	}
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksMechCreate( &m_mech );
 
-	if (pathType == 1)
+	if (pathType == 0)
 	{
 		if (!RocksGotoReadyPosition())
 			return FALSE;
