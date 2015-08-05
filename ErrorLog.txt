@@ -1,5 +1,5 @@
 
 
 Error occur at:
-Error Code:SPG_ERR_INVALID_PARAMETER
+Error Code:给定的轨迹超出Delta机器人工作区。
 

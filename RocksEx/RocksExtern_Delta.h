@@ -88,7 +88,6 @@ NYCE_STATUS RocksKinDeltaPosition(ROCKS_MECH* pMech, double pPos[])
 	return status;
 }
 
-
 NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pKin)
 {
 	if (delta_mech_pars.e <= 0 || delta_mech_pars.f <= 0 || delta_mech_pars.re <= 0 || delta_mech_pars.rf <= 0 )

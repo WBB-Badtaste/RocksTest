@@ -3,8 +3,6 @@
 #include "RocksExtern_Delta.h"
 
 ROCKS_MECH  m_mech;
-ROCKS_TRAJ_PATH rocksTrajPath;
-ROCKS_KIN_INV_PARS kinPars;
 
 typedef struct cartesianCoordinate
 {
@@ -55,8 +53,6 @@ NYCE_STATUS RocksTerm()
 {
 	NYCE_STATUS nyceStatus(NYCE_OK);
 
-	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajDeletePath( &m_mech, &rocksTrajPath);
-
 	if (m_mech.var.jointBuffersAllocated)
 	{
 		int i;
@@ -87,6 +83,7 @@ NYCE_STATUS RocksPtpDelta(const CARTESIAN_COORD &carCoord, const TRAJ_PARS &traj
 	NYCE_STATUS nyceStatus(NYCE_OK);
 
 	ROCKS_TRAJ_SINE_ACC_PTP_PARS sinePtpPars;
+	ROCKS_KIN_INV_PARS kinPars;
 
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinDeltaPosition(&m_mech, sinePtpPars.startPos);
 	sinePtpPars.endPos[0] = carCoord.x;
@@ -112,6 +109,52 @@ NYCE_STATUS RocksPtpDelta(const CARTESIAN_COORD &carCoord, const TRAJ_PARS &traj
 
 	// Synchronize on motion complete
 	// ------------------------------
+	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksStreamSynchronize( &m_mech, timeout);
+
+	return nyceStatus;
+}
+
+NYCE_STATUS RocksCricleDelta(const CARTESIAN_COORD &centerOffset, const double &angle, const TRAJ_PARS &trajPars, const double timeout = SAC_INDEFINITE)
+{
+	NYCE_STATUS nyceStatus(NYCE_OK);
+
+	ROCKS_TRAJ_SINE_ACC_CIRCLE_PARS sineAccCirclePars;
+	ROCKS_KIN_INV_PARS kinPars;
+
+	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinDeltaPosition(&m_mech, sineAccCirclePars.startPos);
+
+	sineAccCirclePars.maxVelocity = trajPars.velocity;
+	sineAccCirclePars.maxAcceleration = trajPars.acceleration;
+	sineAccCirclePars.splineTime = trajPars.splineTime;
+	sineAccCirclePars.center[ 0 ] = 0;
+	sineAccCirclePars.center[ 1 ] = 0;
+	sineAccCirclePars.angle = angle;
+	sineAccCirclePars.plane = ROCKS_PLANE_XY;
+	sineAccCirclePars.maxNrOfSplines = 0;
+	sineAccCirclePars.pPositionSplineBuffer = NULL;
+	sineAccCirclePars.pVelocitySplineBuffer = NULL;
+
+	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSineAccCircle( &m_mech, &sineAccCirclePars);
+
+	ROCKS_POSE pose;
+	pose.r.x = CalcRotateAngle(-centerOffset.y, -centerOffset.z);
+	pose.r.y = 0;
+	pose.r.z = CalcRotateAngle(-centerOffset.x, -centerOffset.y);
+	pose.t.x = sineAccCirclePars.startPos[0] + centerOffset.x;
+	pose.t.y = sineAccCirclePars.startPos[1] + centerOffset.y;
+	pose.t.z = sineAccCirclePars.startPos[2] + centerOffset.z;
+
+	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinMoveOrigin( &m_mech, &pose );
+
+	for (int ax = 0; ax < ROCKS_MECH_MAX_NR_OF_JOINTS; ++ax)
+	{
+		kinPars.pJointPositionBuffer[ ax ] = NULL;
+		kinPars.pJointVelocityBuffer[ ax ] = NULL;
+	}
+	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinInverseDelta( &m_mech, &kinPars );
+
+	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksStream( &m_mech );	
+
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksStreamSynchronize( &m_mech, timeout);
 
 	return nyceStatus;

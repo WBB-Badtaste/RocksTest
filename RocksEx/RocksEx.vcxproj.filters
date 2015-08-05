@@ -39,9 +39,6 @@
     <ClInclude Include="NyceExDefs.h">
       <Filter>Header Files\RocksEx</Filter>
     </ClInclude>
-    <ClInclude Include="RotationTransformation.h">
-      <Filter>Header Files\RocksEx</Filter>
-    </ClInclude>
     <ClInclude Include="AxisControl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -52,6 +49,9 @@
       <Filter>Header Files\RocksEx</Filter>
     </ClInclude>
     <ClInclude Include="NyceExErrorHandle.h">
+      <Filter>Header Files\RocksEx</Filter>
+    </ClInclude>
+    <ClInclude Include="SpaceAlgorithm.h">
       <Filter>Header Files\RocksEx</Filter>
     </ClInclude>
   </ItemGroup>

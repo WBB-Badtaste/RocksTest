@@ -29,21 +29,33 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	nyceStatus = NyceError(nyceStatus) ? nyceStatus : RocksInit(NUM_AXES, axId);
 
-	//nyceStatus = NyceError(nyceStatus) ? nyceStatus : RocksExExportSplineDatas(TRUE);
+	nyceStatus = NyceError(nyceStatus) ? nyceStatus : RocksExExportSplineDatas(TRUE);
 
 	CARTESIAN_COORD homePos;
 	homePos.x = 30;
 	homePos.y = 0;
 	homePos.z = -160;
 
-	TRAJ_PARS homePars;
-	homePars.velocity = 10;
-	homePars.acceleration = 3000;
-	homePars.splineTime = 0.0002;
+	TRAJ_PARS homeTrajPars;
+	homeTrajPars.velocity = 100;
+	homeTrajPars.acceleration = 1000;
+	homeTrajPars.splineTime = 0.001;
 
-	nyceStatus = NyceError(nyceStatus) ? nyceStatus : RocksPtpDelta(homePos, homePars, 30);
+	nyceStatus = NyceError(nyceStatus) ? nyceStatus : RocksPtpDelta(homePos, homeTrajPars);
 
+	CARTESIAN_COORD cricleCenterOffest;
+	cricleCenterOffest.x = -30;
+	cricleCenterOffest.y = 0;
+	cricleCenterOffest.z = 0;
 
+	double angle = 2.0 * M_PI;
+
+	TRAJ_PARS cricleTrajPars;
+	cricleTrajPars.velocity = 100;
+	cricleTrajPars.acceleration = 1000;
+	cricleTrajPars.splineTime = 0.001;
+
+	nyceStatus = NyceError(nyceStatus) ? nyceStatus : RocksCricleDelta(cricleCenterOffest, angle, cricleTrajPars);
 
 	nyceStatus = NyceError(nyceStatus) ? nyceStatus : RocksTerm();
 
