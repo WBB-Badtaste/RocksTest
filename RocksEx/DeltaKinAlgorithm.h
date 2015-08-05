@@ -13,20 +13,6 @@ typedef struct DeltaMechPars
 	double rf;
 }DELTA_MECH_PARS;
 
-typedef struct JointCoordinate
-{
-	double joint1;
-	double joint2;
-	double joint3;
-}JOINT_COORDINATE;
-
-typedef struct CartesianCoordinate
-{
-	double x;
-	double y;
-	double z;
-}CARTESIAN_COORDINATE;
-
 // trigonometric constants
 const double sqrt3 = sqrt(3.0);
 const double sin120 = sqrt3 / 2.0;   
@@ -37,20 +23,20 @@ const double tan30 = 1 / sqrt3;
 
 // forward kinematics: (theta1, theta2, theta3) -> (x0, y0, z0)
 // returned status: 0=OK, -1=non-existing position
-BOOL DeltaCalcPosForward(const DELTA_MECH_PARS &deltaMechPars, const JOINT_COORDINATE &jointPos, CARTESIAN_COORDINATE &cartesianPos) 
+BOOL DeltaCalcPosForward(const DELTA_MECH_PARS &deltaMechPars, const double* const pJointPos, double* const pCartesianPos) 
 {
 	double t(deltaMechPars.f - deltaMechPars.e);
 
-	double y1(-(t + deltaMechPars.rf * cos(jointPos.joint1)));
-	double z1( -deltaMechPars.rf * sin(jointPos.joint1));
+	double y1(-(t + deltaMechPars.rf * cos(pJointPos[0])));
+	double z1( -deltaMechPars.rf * sin(pJointPos[0]));
 
-	double y2((t + deltaMechPars.rf * cos(jointPos.joint2)) * sin30);  
+	double y2((t + deltaMechPars.rf * cos(pJointPos[1])) * sin30);  
 	double x2(y2 * tan60);
-	double z2(-deltaMechPars.rf * sin(jointPos.joint2));
+	double z2(-deltaMechPars.rf * sin(pJointPos[1]));
 
-	double y3((t + deltaMechPars.rf * cos(jointPos.joint3)) * sin30);
+	double y3((t + deltaMechPars.rf * cos(pJointPos[2])) * sin30);
 	double x3(-y3 * tan60);
-	double z3(-deltaMechPars.rf * sin(jointPos.joint3));
+	double z3(-deltaMechPars.rf * sin(pJointPos[2]));
 
 	double dnm((y2 - y1) * x3 - (y3 - y1) * x2);
 
@@ -73,11 +59,11 @@ BOOL DeltaCalcPosForward(const DELTA_MECH_PARS &deltaMechPars, const JOINT_COORD
 
 	// discriminant
 	double d(b * b - 4.0 * a * c);
-	if (d < 0) return -1; // non-existing point
+	if (d < 0) return FALSE; // non-existing point
 
-	cartesianPos.z = -0.5 * (b + sqrt(d)) / a;
-	cartesianPos.x = (a1 * cartesianPos.z + b1) / dnm;
-	cartesianPos.y = (a2 * cartesianPos.z + b2) / dnm;
+	pCartesianPos[2] = -0.5 * (b + sqrt(d)) / a;
+	pCartesianPos[0] = (a1 * pCartesianPos[2] + b1) / dnm;
+	pCartesianPos[1] = (a2 * pCartesianPos[2] + b2) / dnm;
 
 	return TRUE;
 } 
@@ -91,7 +77,8 @@ BOOL DeltaCalcAngleYZ(const DELTA_MECH_PARS &deltaMechPars, const double &x, con
 	double b((-deltaMechPars.f - (y - deltaMechPars.e)) / z);
 	// discriminant
 	double d(-(a - b * deltaMechPars.f) * (a - b * deltaMechPars.f) + deltaMechPars.rf * (b * b * deltaMechPars.rf + deltaMechPars.rf)); 
-	if (d < 0) return FALSE; // non-existing point
+	if (d < 0) 
+		return FALSE; // non-existing point
 	double yj((-deltaMechPars.f - a * b - sqrt(d)) / (b * b + 1)); // choosing outer point
 	double zj(a + b * yj);
 	theta = atan(zj / (yj + deltaMechPars.f));
@@ -100,17 +87,20 @@ BOOL DeltaCalcAngleYZ(const DELTA_MECH_PARS &deltaMechPars, const double &x, con
 
 // inverse kinematics: (x0, y0, z0) -> (theta1, theta2, theta3)
 // returned status: 0=OK, -1=non-existing position
-BOOL DeltaCalcPosInverse(const DELTA_MECH_PARS &deltaMechPars, const CARTESIAN_COORDINATE &cartesianPos, JOINT_COORDINATE &jointPos) 
+BOOL DeltaCalcPosInverse(const DELTA_MECH_PARS &deltaMechPars, const double* const pCartesianPos, double* const pJointPos) 
 {
-	jointPos.joint1 = jointPos.joint2 = jointPos.joint3 = 0;
-	BOOL status = DeltaCalcAngleYZ(deltaMechPars, cartesianPos.x, cartesianPos.y, cartesianPos.z, jointPos.joint1);
-	if (status == TRUE) status = DeltaCalcAngleYZ(deltaMechPars, cartesianPos.x * cos120 + cartesianPos.y * sin120, cartesianPos.y * cos120 - cartesianPos.x * sin120, cartesianPos.z, jointPos.joint2);  // rotate coords to +120 deg
-	if (status == TRUE) status = DeltaCalcAngleYZ(deltaMechPars, cartesianPos.x * cos120 - cartesianPos.y * sin120, cartesianPos.y * cos120 + cartesianPos.x * sin120, cartesianPos.z, jointPos.joint3);  // rotate coords to -120 deg
+	pJointPos[0] = pJointPos[1] = pJointPos[2] = 0;
+
+	BOOL status = DeltaCalcAngleYZ(deltaMechPars, pCartesianPos[0], pCartesianPos[1], pCartesianPos[2], pJointPos[0]);
+	if (status == TRUE) 
+		status = DeltaCalcAngleYZ(deltaMechPars, pCartesianPos[0] * cos120 + pCartesianPos[1] * sin120, pCartesianPos[1] * cos120 - pCartesianPos[0] * sin120, pCartesianPos[2], pJointPos[1]);  // rotate coords to +120 deg
+	if (status == TRUE) 
+		status = DeltaCalcAngleYZ(deltaMechPars, pCartesianPos[0] * cos120 - pCartesianPos[1] * sin120, pCartesianPos[1] * cos120 + pCartesianPos[0] * sin120, pCartesianPos[2], pJointPos[2]);  // rotate coords to -120 deg
 	return status;
 }
 
 //vel IK
-int DeltaCalcVelInverse(const DELTA_MECH_PARS &deltaMechPars, const CARTESIAN_COORDINATE &cartesianPos, const CARTESIAN_COORDINATE &cartesianVel, const JOINT_COORDINATE &jointPos, JOINT_COORDINATE &jointVel)
+BOOL DeltaCalcVelInverse(const DELTA_MECH_PARS &deltaMechPars, const double* const pCartesianPos, const double* const pCartesianVel, const double* const pJointPos, double* const pJointVel)
 {
 	double wb(deltaMechPars.f);
 	double up(deltaMechPars.e);
@@ -120,15 +110,15 @@ int DeltaCalcVelInverse(const DELTA_MECH_PARS &deltaMechPars, const CARTESIAN_CO
 	double b(sqrt3 / 2.0 * (deltaMechPars.e - wb));
 	double c(wp - wb / 2.0); 
 
-	double cos_theta1(cos(jointPos.joint1));
-	double sin_theta1(sin(jointPos.joint1));
-	double cos_theta2(cos(jointPos.joint2));
-	double sin_theta2(sin(jointPos.joint2));
-	double cos_theta3(cos(jointPos.joint3));
-	double sin_theta3(sin(jointPos.joint3));
+	double cos_theta1(cos(pJointPos[0]));
+	double sin_theta1(sin(pJointPos[0]));
+	double cos_theta2(cos(pJointPos[1]));
+	double sin_theta2(sin(pJointPos[1]));
+	double cos_theta3(cos(pJointPos[2]));
+	double sin_theta3(sin(pJointPos[2]));
 
-	jointVel.joint1 = (cartesianPos.x * cartesianVel.x + ((cartesianPos.y + a) + deltaMechPars.rf * cos_theta1) * cartesianVel.y + (cartesianPos.z + deltaMechPars.rf * sin_theta1)* cartesianVel.z) / (deltaMechPars.rf * ((cartesianPos.y + a) * sin_theta1 - cartesianPos.z * cos_theta1));
-	jointVel.joint2 = ((2.0 * (cartesianPos.x + b) - sqrt3 * deltaMechPars.rf * cos_theta2) * cartesianVel.x + (2.0 * (cartesianPos.y + c) - deltaMechPars.rf * cos_theta2) * cartesianVel.y + 2.0 * (cartesianPos.z + deltaMechPars.rf * sin_theta2) * cartesianVel.z) / (-deltaMechPars.rf * ((sqrt3 * (cartesianPos.x + b) + cartesianPos.y + c) * sin_theta2 + 2.0 * cartesianPos.z * cos_theta2));
-	jointVel.joint3 = ((2.0 * (cartesianPos.x - b) + sqrt3 * deltaMechPars.rf * cos_theta3) * cartesianVel.x + (2.0 * (cartesianPos.y + c) - deltaMechPars.rf * cos_theta3) * cartesianVel.y + 2.0 * (cartesianPos.z + deltaMechPars.rf * sin_theta3) * cartesianVel.z) / ( deltaMechPars.rf * ((sqrt3 * (cartesianPos.x - b) - cartesianPos.y - c) * sin_theta3 - 2.0 * cartesianPos.z * cos_theta3));
-	return 0; 
+	pJointVel[0] = (pCartesianPos[0] * pCartesianPos[0] + ((pCartesianPos[1] + a) + deltaMechPars.rf * cos_theta1) * pCartesianVel[1] + (pCartesianPos[2] + deltaMechPars.rf * sin_theta1)* pCartesianVel[2]) / (deltaMechPars.rf * ((pCartesianPos[1] + a) * sin_theta1 -pCartesianPos[2] * cos_theta1));
+	pJointVel[1] = ((2.0 * (pCartesianPos[0] + b) - sqrt3 * deltaMechPars.rf * cos_theta2) * pCartesianVel[0] + (2.0 * (pCartesianPos[1] + c) - deltaMechPars.rf * cos_theta2) * pCartesianVel[1] + 2.0 * (pCartesianPos[2] + deltaMechPars.rf * sin_theta2) * pCartesianVel[2]) / (-deltaMechPars.rf * ((sqrt3 * (pCartesianPos[0] + b) + pCartesianPos[1] + c) * sin_theta2 + 2.0 * pCartesianPos[2] * cos_theta2));
+	pJointVel[2] = ((2.0 * (pCartesianPos[0] - b) + sqrt3 * deltaMechPars.rf * cos_theta3) * pCartesianVel[0] + (2.0 * (pCartesianPos[1] + c) - deltaMechPars.rf * cos_theta3) * pCartesianVel[1] + 2.0 * (pCartesianPos[2] + deltaMechPars.rf * sin_theta3) * pCartesianVel[2]) / ( deltaMechPars.rf * ((sqrt3 * (pCartesianPos[0] - b) - pCartesianPos[1] - c) * sin_theta3 - 2.0 * pCartesianPos[2] * cos_theta3));
+	return TRUE; 
 }

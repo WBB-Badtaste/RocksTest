@@ -281,9 +281,8 @@ void Yaw(double *pVector, double angle)
 void ConvertCriclePath(ROCKS_PLANE &plane, ROCKS_POSE &pose, double &startPos1, double &startPos2, double &center1, double &center2, double &angle, double &CurrentDistance, double &CurrentVelocity, double *pPosition, double *pVelocity)
 {
 	double radius(sqrt((center1 - startPos1) * (center1 - startPos1) + (center2 - startPos2) * (center2 - startPos2)));
-	double relativeAngle = CurrentDistance / radius;
-	double alhpa = acos((startPos1 - center1) / radius);
-	double beta = (startPos2 - center2) > 0 ? alhpa : - alhpa;
+	double relativeAngle(CurrentDistance / radius);
+	double beta((startPos2 - center2) > 0 ? acos((startPos1 - center1) / radius) : -acos((startPos1 - center1) / radius));
 	double absoluteAngle;
 	if (angle>0)
 	{
@@ -292,33 +291,33 @@ void ConvertCriclePath(ROCKS_PLANE &plane, ROCKS_POSE &pose, double &startPos1, 
 		switch(plane)
 		{
 		case ROCKS_PLANE_XY:
-			pPosition[0] = center1 + radius * cos(absoluteAngle);
-			pPosition[1] = center2 + radius * sin(absoluteAngle);
-			pPosition[2] = 0;
+			pPosition[0] =  center1 + radius * cos(absoluteAngle);
+			pPosition[1] =  center2 + radius * sin(absoluteAngle);
+			pPosition[2] =  0;
 
 			pVelocity[0] =  CurrentVelocity * sin(absoluteAngle);
 			pVelocity[1] = -CurrentVelocity * cos(absoluteAngle);
 			pVelocity[2] =  0;
 			break;
 		case ROCKS_PLANE_YZ:
-			pPosition[1] = center1 + radius * cos(absoluteAngle);
-			pPosition[2] = center2 + radius * sin(absoluteAngle);
-			pPosition[0] = 0;
+			pPosition[1] =  center1 + radius * cos(absoluteAngle);
+			pPosition[2] =  center2 + radius * sin(absoluteAngle);
+			pPosition[0] =  0;
 
 			pVelocity[1] =  CurrentVelocity * sin(absoluteAngle);
 			pVelocity[2] = -CurrentVelocity * cos(absoluteAngle);
 			pVelocity[0] =  0;
 			break;
 		case ROCKS_PLANE_ZX:
-			pPosition[0] = center1 + radius * cos(absoluteAngle);
-			pPosition[2] = center2 + radius * sin(absoluteAngle);
-			pPosition[1] = 0;
+			pPosition[0] =  center1 + radius * cos(absoluteAngle);
+			pPosition[2] =  center2 + radius * sin(absoluteAngle);
+			pPosition[1] =  0;
 
 			pVelocity[0] =  CurrentVelocity * sin(absoluteAngle);
 			pVelocity[2] = -CurrentVelocity * cos(absoluteAngle);
 			pVelocity[1] =  0;
 			break;
-		default:
+		default: 
 			break;
 		}
 	}
@@ -329,27 +328,27 @@ void ConvertCriclePath(ROCKS_PLANE &plane, ROCKS_POSE &pose, double &startPos1, 
 		switch(plane)
 		{
 		case ROCKS_PLANE_XY:
-			pPosition[0] = center1 + radius * cos(absoluteAngle);
-			pPosition[1] = center2 + radius * sin(absoluteAngle);
-			pPosition[2] = 0;
+			pPosition[0] =  center1 + radius * cos(absoluteAngle);
+			pPosition[1] =  center2 + radius * sin(absoluteAngle);
+			pPosition[2] =  0;
 
 			pVelocity[0] = -CurrentVelocity * sin(absoluteAngle);
 			pVelocity[1] =  CurrentVelocity * cos(absoluteAngle);
 			pVelocity[2] =  0;
 			break;
 		case ROCKS_PLANE_YZ:
-			pPosition[1] = center1 + radius * cos(absoluteAngle);
-			pPosition[2] = center2 + radius * sin(absoluteAngle);
-			pPosition[0] = 0;
+			pPosition[1] =  center1 + radius * cos(absoluteAngle);
+			pPosition[2] =  center2 + radius * sin(absoluteAngle);
+			pPosition[0] =  0;
 
 			pVelocity[1] = -CurrentVelocity * sin(absoluteAngle);
 			pVelocity[2] =  CurrentVelocity * cos(absoluteAngle);
 			pVelocity[0] =  0;
 			break;
 		case ROCKS_PLANE_ZX:
-			pPosition[0] = center1 + radius * cos(absoluteAngle);
-			pPosition[2] = center2 + radius * sin(absoluteAngle);
-			pPosition[1] = 0;
+			pPosition[0] =  center1 + radius * cos(absoluteAngle);
+			pPosition[2] =  center2 + radius * sin(absoluteAngle);
+			pPosition[1] =  0;
 
 			pVelocity[0] = -CurrentVelocity * sin(absoluteAngle);
 			pVelocity[2] =  CurrentVelocity * cos(absoluteAngle);

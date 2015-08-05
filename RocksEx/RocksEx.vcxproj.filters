@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Header Files\RocksEx">
+      <UniqueIdentifier>{6281c267-ff1b-4272-96f9-e26b4640b396}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="ReadMe.txt" />
@@ -24,14 +27,32 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CoordinateAlgorithm.h">
+    <ClInclude Include="ErrorHandle.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CoordinateAlgorithm.h">
+      <Filter>Header Files\RocksEx</Filter>
     </ClInclude>
     <ClInclude Include="DeltaKinAlgorithm.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\RocksEx</Filter>
+    </ClInclude>
+    <ClInclude Include="NyceExDefs.h">
+      <Filter>Header Files\RocksEx</Filter>
     </ClInclude>
     <ClInclude Include="RotationTransformation.h">
+      <Filter>Header Files\RocksEx</Filter>
+    </ClInclude>
+    <ClInclude Include="AxisControl.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RocksControl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RocksExtern_Delta.h">
+      <Filter>Header Files\RocksEx</Filter>
+    </ClInclude>
+    <ClInclude Include="NyceExErrorHandle.h">
+      <Filter>Header Files\RocksEx</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

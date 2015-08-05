@@ -6,6 +6,12 @@
 
 #include <rocksapi.h>
 
+uint32_t mix_Boundary = 0;
+ROCKS_PLANE mix_plane = ROCKS_PLANE_XY;
+ROCKS_POSE mix_pose;
+ROCKS_MOVE_TYPE mix_moveType = ROCKS_MOVE_TYPE_LINEAR;
+double mix_startPos1, mix_endPos1, mix_startPos2, mix_endPos2, mix_center1, mix_center2, mix_angle, mix_endPos_x, mix_endPos_y, mix_endPos_z;
+
 void ConvertCriclePath(ROCKS_PLANE &plane, ROCKS_POSE &pose, double &startPos1, double &startPos2, double &center1, double &center2, double &angle, double &CurrentDistance, double &CurrentVelocity, double *pPosition, double *pVelocity)
 {
 	double radius = sqrt((center1 - startPos1) * (center1 - startPos1) + (center2 - startPos2) * (center2 - startPos2));
@@ -292,3 +298,130 @@ void ConverLinePath(double *pStartPos, double *pEndPos, double &totalDistance, d
 	pVelocity[1] = CurrentVelocity * rate_y;
 	pVelocity[2] = CurrentVelocity * rate_z;
 }
+
+void ConvertPathToWorldCoordinate(ROCKS_MECH* pMech, uint32_t &index, double *pPosition, double *pVelocity)
+{
+	if (pMech->var.moveType == ROCKS_MOVE_TYPE_CIRCULAR)//check the path type
+	{
+		ConvertCriclePath(pMech->var.startPos, pMech->var.angle, pMech->var.pPositionSplineBuffer[index], pMech->var.pVelocitySplineBuffer[index],pMech->var.plane, pMech->var.radius, pMech->var.center, pPosition, pVelocity);
+	} 
+
+	if (pMech->var.moveType == ROCKS_MOVE_TYPE_LINEAR)
+	{
+		ConverLinePath(pMech->var.startPos, pMech->var.endPos, pMech->var.pPositionSplineBuffer[pMech->var.usedNrOfSplines - 1], pMech->var.pPositionSplineBuffer[index],pMech->var.pVelocitySplineBuffer[index], pPosition, pVelocity);
+	}
+
+	if (pMech->var.moveType == ROCKS_MOVE_TYPE_MIX)
+	{
+		if (index == 0)
+		{
+			mix_Boundary = 0;
+		}
+		if (index == mix_Boundary)
+		{
+			// 			if (pMech->var.pVelocitySplineBuffer[index] == 0 && pMech->var.pPositionSplineBuffer[index] == 0)//°üÎ²
+			// 			{
+			// 				mix_Boundary = 0;
+			// 				index =  pMech->var.usedNrOfSplines;
+			// 				return;
+			// 			}
+
+			mix_Boundary = (uint32_t)(pMech->var.pVelocitySplineBuffer[index + 3] + index + 7);
+			switch ((int)(pMech->var.pPositionSplineBuffer[index + 3]) / 256)
+			{
+			case 0://XY-PLANE
+				mix_plane = ROCKS_PLANE_XY;
+				break;
+			case 1://YZ-PLANE
+				mix_plane = ROCKS_PLANE_YZ;
+				break;
+			case 2://ZX-PLANE
+				mix_plane = ROCKS_PLANE_ZX;
+				break;
+			default:
+				break;
+			}
+			switch ((int)(pMech->var.pPositionSplineBuffer[index + 3]) % 256)
+			{
+			case 0://LINE
+				mix_moveType = ROCKS_MOVE_TYPE_LINEAR;
+				break;
+			case 1://CRICLE
+				mix_moveType = ROCKS_MOVE_TYPE_CIRCULAR;
+				break;
+			default:
+				break;
+			}
+			mix_endPos_x = pMech->var.pVelocitySplineBuffer[index];
+			mix_endPos_y = pMech->var.pPositionSplineBuffer[index];
+			mix_endPos_z = pMech->var.pVelocitySplineBuffer[index + 1];
+			mix_pose.r.x = pMech->var.pPositionSplineBuffer[index + 1];
+			mix_pose.r.y = pMech->var.pPositionSplineBuffer[index + 2];
+			mix_pose.r.z = pMech->var.pVelocitySplineBuffer[index + 2];
+			mix_startPos1 = pMech->var.pVelocitySplineBuffer[index + 4];
+			mix_startPos2 = pMech->var.pPositionSplineBuffer[index + 4];
+			switch (mix_moveType)
+			{
+			case ROCKS_MOVE_TYPE_LINEAR:
+				mix_endPos1 = pMech->var.pVelocitySplineBuffer[index + 5];
+				mix_endPos2 = pMech->var.pPositionSplineBuffer[index + 5];
+				break;
+			case ROCKS_MOVE_TYPE_CIRCULAR:
+				mix_angle = pMech->var.pVelocitySplineBuffer[index + 5];
+				mix_center1 = pMech->var.pVelocitySplineBuffer[index + 6];
+				mix_center2 = pMech->var.pPositionSplineBuffer[index + 6];
+				break;
+			default:
+				break;
+			}
+			index += 7;
+		}
+		switch (mix_moveType)
+		{
+		case ROCKS_MOVE_TYPE_LINEAR:
+			ConverLinePath(mix_plane, mix_pose, mix_startPos1, mix_endPos1, mix_startPos2, mix_endPos2, pMech->var.pPositionSplineBuffer[index], pMech->var.pVelocitySplineBuffer[index], pPosition, pVelocity);
+			break;
+		case ROCKS_MOVE_TYPE_CIRCULAR:
+			ConvertCriclePath(mix_plane, mix_pose, mix_startPos1, mix_startPos2, mix_center1, mix_center2, mix_angle, pMech->var.pPositionSplineBuffer[index], pMech->var.pVelocitySplineBuffer[index], pPosition, pVelocity);
+			break;
+		default:
+			break;
+		}
+		switch (mix_plane)
+		{
+		case ROCKS_PLANE_XY://XY-PLANE
+			pPosition[2] = mix_endPos_z;
+			break;
+		case ROCKS_PLANE_YZ://YZ-PLANE
+			pPosition[0] = mix_endPos_x;
+			break;
+		case ROCKS_PLANE_ZX://ZX-PLANE
+			pPosition[1] = mix_endPos_y;
+			break;
+		default:
+			break;
+		}
+	}
+
+	if (pMech->var.refFramePose2.r.x)
+	{
+		Roll(pPosition, pMech->var.refFramePose2.r.x);
+		Roll(pVelocity, pMech->var.refFramePose2.r.x);
+	}
+
+	if (pMech->var.refFramePose2.r.y)
+	{
+		Pitch(pPosition, pMech->var.refFramePose2.r.y);
+		Pitch(pVelocity, pMech->var.refFramePose2.r.y);
+	}
+
+	if (pMech->var.refFramePose2.r.z)
+	{
+		Yaw(pPosition, pMech->var.refFramePose2.r.z);
+		Yaw(pVelocity, pMech->var.refFramePose2.r.z);
+	}
+
+	pPosition[0] += pMech->var.refFramePose2.t.x;
+	pPosition[1] += pMech->var.refFramePose2.t.y;
+	pPosition[2] += pMech->var.refFramePose2.t.z;
+} 

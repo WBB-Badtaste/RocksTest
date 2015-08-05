@@ -55,6 +55,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>sac.lib;nyce.lib;n4krocks.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -77,8 +78,14 @@
     <None Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AxisControl.h" />
     <ClInclude Include="CoordinateAlgorithm.h" />
     <ClInclude Include="DeltaKinAlgorithm.h" />
+    <ClInclude Include="ErrorHandle.h" />
+    <ClInclude Include="NyceExDefs.h" />
+    <ClInclude Include="RocksControl.h" />
+    <ClInclude Include="NyceExErrorHandle.h" />
+    <ClInclude Include="RocksExtern_Delta.h" />
     <ClInclude Include="RotationTransformation.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
