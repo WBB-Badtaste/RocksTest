@@ -121,13 +121,15 @@ NYCE_STATUS RocksCricleDelta(const CARTESIAN_COORD &centerOffset, const double &
 	ROCKS_TRAJ_SINE_ACC_CIRCLE_PARS sineAccCirclePars;
 	ROCKS_KIN_INV_PARS kinPars;
 
-	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinDeltaPosition(&m_mech, sineAccCirclePars.startPos);
+	const double radius(sqrt(centerOffset.x * centerOffset.x + centerOffset.y * centerOffset.y + centerOffset.z * centerOffset.z));
+
+	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinDeltaPosition(&m_mech, 	sineAccCirclePars.startPos);
 
 	sineAccCirclePars.maxVelocity = trajPars.velocity;
 	sineAccCirclePars.maxAcceleration = trajPars.acceleration;
 	sineAccCirclePars.splineTime = trajPars.splineTime;
-	sineAccCirclePars.center[ 0 ] = 0;
-	sineAccCirclePars.center[ 1 ] = 0;
+	sineAccCirclePars.center[ 0 ] = sineAccCirclePars.startPos[0] - radius;
+	sineAccCirclePars.center[ 1 ] = sineAccCirclePars.startPos[1];
 	sineAccCirclePars.angle = angle;
 	sineAccCirclePars.plane = ROCKS_PLANE_XY;
 	sineAccCirclePars.maxNrOfSplines = 0;
@@ -136,13 +138,23 @@ NYCE_STATUS RocksCricleDelta(const CARTESIAN_COORD &centerOffset, const double &
 
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSineAccCircle( &m_mech, &sineAccCirclePars);
 
+	
 	ROCKS_POSE pose;
 	pose.r.x = CalcRotateAngle(-centerOffset.y, -centerOffset.z);
 	pose.r.y = 0;
 	pose.r.z = CalcRotateAngle(-centerOffset.x, -centerOffset.y);
-	pose.t.x = sineAccCirclePars.startPos[0] + centerOffset.x;
-	pose.t.y = sineAccCirclePars.startPos[1] + centerOffset.y;
-	pose.t.z = sineAccCirclePars.startPos[2] + centerOffset.z;
+
+	double rotatedCenter[3];
+	rotatedCenter[0] = sineAccCirclePars.startPos[0];
+	rotatedCenter[1] = sineAccCirclePars.startPos[1];
+	rotatedCenter[2] = sineAccCirclePars.startPos[2];
+	Roll(rotatedCenter, pose.r.x);
+	Pitch(rotatedCenter, pose.r.y);
+	Yaw(rotatedCenter, pose.r.z);
+
+	pose.t.x = sineAccCirclePars.startPos[0] - rotatedCenter[0];
+	pose.t.y = sineAccCirclePars.startPos[1] - rotatedCenter[1];
+	pose.t.z = sineAccCirclePars.startPos[2] - rotatedCenter[2]; 
 
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinMoveOrigin( &m_mech, &pose );
 

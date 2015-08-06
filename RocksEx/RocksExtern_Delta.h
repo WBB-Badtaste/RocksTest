@@ -7,8 +7,6 @@
 #include "CoordinateAlgorithm.h"
 #include "DeltaKinAlgorithm.h"
 
-#define DELTA_AXES_NUM 3
-
 DELTA_MECH_PARS delta_mech_pars;
 double rate_angle2pu[ROCKS_MECH_MAX_NR_OF_JOINTS];
 
@@ -33,9 +31,9 @@ NYCE_STATUS RocksSetPuRateDelta(const double &rate1, const double &rate2, const 
 	return NYCE_OK;
 }
 
-inline NYCE_STATUS RocksCheckRate()
+inline NYCE_STATUS RocksCheckRate(ROCKS_MECH* pMech)
 {
-	for (uint32_t ax = 0; ax < DELTA_AXES_NUM; ax++)
+	for (uint32_t ax = 0; ax < pMech->nrOfJoints; ax++)
 	{
 		if (rate_angle2pu[ax] < 1)
 			return ROCKS_ERR_PU_RATE_ERROR;
@@ -58,7 +56,7 @@ NYCE_STATUS RocksKinForwardDelta(ROCKS_MECH* pMech, const double pJointPos[], do
 	if (delta_mech_pars.e <= 0 || delta_mech_pars.f <= 0 || delta_mech_pars.re <= 0 || delta_mech_pars.rf <= 0 )
 		return ROCKS_ERR_DELTA_PARS_ERROR;
 
-	NYCE_STATUS status = RocksCheckRate();
+	NYCE_STATUS status = RocksCheckRate(pMech);
 	if (NyceError(status))
 		return status;
 
@@ -78,6 +76,7 @@ NYCE_STATUS RocksKinForwardDelta(ROCKS_MECH* pMech, const double pJointPos[], do
 
 NYCE_STATUS RocksKinDeltaPosition(ROCKS_MECH* pMech, double pPos[])
 {
+	ZeroMemory(pPos, ROCKS_MECH_MAX_DOF * sizeof(double));
 	double pJointPos[ROCKS_MECH_MAX_DOF];
 	NYCE_STATUS status = NYCE_OK;
 	for (uint32_t ax = 0; ax < pMech->nrOfJoints; ax++)
@@ -93,7 +92,7 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 	if (delta_mech_pars.e <= 0 || delta_mech_pars.f <= 0 || delta_mech_pars.re <= 0 || delta_mech_pars.rf <= 0 )
 		return ROCKS_ERR_DELTA_PARS_ERROR;
 
-	NYCE_STATUS status = RocksCheckRate();
+	NYCE_STATUS status = RocksCheckRate(pMech);
 	if (NyceError(status))
 		return status;
 

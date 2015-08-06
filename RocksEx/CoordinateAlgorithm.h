@@ -123,7 +123,6 @@ void ConvertCriclePath(double *pStartPos, double &totalAngle, double &CurrentDis
 	double angle;
 	double alhpa;
 	double beta ;
-	double CenterWorldCoordinate[3];
 	switch(plane)
 	{
 	case ROCKS_PLANE_XY:
@@ -136,13 +135,9 @@ void ConvertCriclePath(double *pStartPos, double &totalAngle, double &CurrentDis
 		else
 			angle = beta + CurrentDistance / radius;
 
-		CenterWorldCoordinate[0] = pCenter[0];
-		CenterWorldCoordinate[1] = pCenter[1];
-		CenterWorldCoordinate[2] = pStartPos[2];
-
-		pPosition[0] = CenterWorldCoordinate[0] + radius * cos(angle);
-		pPosition[1] = CenterWorldCoordinate[1] + radius * sin(angle);
-		pPosition[2] = CenterWorldCoordinate[2];
+		pPosition[0] = pCenter[0] + radius * cos(angle);
+		pPosition[1] = pCenter[1] + radius * sin(angle);
+		pPosition[2] = pStartPos[2];
 
 		if (totalAngle > 0)
 		{
@@ -165,13 +160,9 @@ void ConvertCriclePath(double *pStartPos, double &totalAngle, double &CurrentDis
 		else
 			angle = beta + CurrentDistance / radius;
 
-		CenterWorldCoordinate[0] = pStartPos[0];
-		CenterWorldCoordinate[1] = pCenter[0];
-		CenterWorldCoordinate[2] = pCenter[1];
-
-		pPosition[0] = CenterWorldCoordinate[0];
-		pPosition[1] = CenterWorldCoordinate[1] + radius * cos(angle);
-		pPosition[2] = CenterWorldCoordinate[2] + radius * sin(angle);
+		pPosition[0] = pStartPos[0];
+		pPosition[1] = pCenter[0] + radius * cos(angle);
+		pPosition[2] = pCenter[1] + radius * sin(angle);
 
 		if (totalAngle > 0)
 		{
@@ -184,7 +175,7 @@ void ConvertCriclePath(double *pStartPos, double &totalAngle, double &CurrentDis
 			pVelocity[0] =  0;
 			pVelocity[1] = -CurrentVelocity * sin(angle);
 			pVelocity[2] =  CurrentVelocity * cos(angle);
-		} 
+		}
 		break;
 	case ROCKS_PLANE_ZX:
 		alhpa = acos((pStartPos[2] - pCenter[0]) / sqrt((pStartPos[2] - pCenter[0]) * (pStartPos[2] - pCenter[0]) + (pStartPos[0] - pCenter[1]) * (pStartPos[0] - pCenter[1])));
@@ -194,13 +185,9 @@ void ConvertCriclePath(double *pStartPos, double &totalAngle, double &CurrentDis
 		else
 			angle = beta + CurrentDistance / radius;
 
-		CenterWorldCoordinate[0] = pCenter[1];
-		CenterWorldCoordinate[1] = pStartPos[1];
-		CenterWorldCoordinate[2] = pCenter[0];
-
-		pPosition[0] = CenterWorldCoordinate[0] + radius * sin(angle);
-		pPosition[1] = CenterWorldCoordinate[1];
-		pPosition[2] = CenterWorldCoordinate[2] + radius * cos(angle);
+		pPosition[0] = pCenter[1] + radius * sin(angle);
+		pPosition[1] = pStartPos[1];
+		pPosition[2] = pCenter[0] + radius * cos(angle);
 
 		if (totalAngle > 0)
 		{
