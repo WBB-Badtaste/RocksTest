@@ -15,7 +15,7 @@
 
 #include <nyceapi.h>
 #include <sacapi.h>
-#include <nhiapi.h> 
+#include <nhiapi.h>  
 #include <rocksapi.h>
 
 #include "DeltaRobot.h"
@@ -35,7 +35,7 @@ HANDLE hEvStop;
 HANDLE hAuto;
 
 HANDLE hAutoPathUsing;
-int pathType = 0;
+int pathType = 1;
 
 LONG64 times = 0;
 LONG64 timesCounter = 0;
@@ -54,10 +54,10 @@ ROCKS_TRAJ_SEGMENT_ARC_PARS segArcPars1,segArcPars2,segArcPars3,segArcPars4;
 
 double segDistance[10];
 
-double position[100000][3];
-double velocity[100000][3];
-
-uint32_t realSegNum = 0;
+// double position[1000000][3];
+// double velocity[1000000][3];
+// 
+// uint32_t realSegNum = 0;
 
 void HandleError(const char *name)
 {
@@ -249,7 +249,6 @@ NYCE_STATUS RocksKinDeltaPosition(struct rocks_mech* pMech, double pPos[])
 		status = NyceError(status) ? status : SacReadVariable(axId[ax], SAC_VAR_SETPOINT_POS, &pJointPos[ax]);
 	}
 	status = NyceError(status) ? status : RocksKinForwardDelta(pMech, pJointPos, pPos);	
-
 	if (NyceError(status))
 	{
 		HandleError(status, "RocksKinDeltaPosition");
@@ -278,45 +277,88 @@ void Yaw(double *pVector, double angle)
 	pVector[1] = -pVector[0] * sin(angle) + pVector[1] * cos(angle);
 	pVector[0] =  buf;
 }
+
 void ConvertCriclePath(ROCKS_PLANE &plane, ROCKS_POSE &pose, double &startPos1, double &startPos2, double &center1, double &center2, double &angle, double &CurrentDistance, double &CurrentVelocity, double *pPosition, double *pVelocity)
 {
-	double radius = sqrt((center1 - startPos1) * (center1 - startPos1) + (center2 - startPos2) * (center2 - startPos2));
-	double relativeAngle = CurrentDistance / radius;
-	double alhpa = acos((startPos1 - center1) / radius);
-	double beta = (startPos2 - center2) > 0 ? alhpa : - alhpa;
-	double absoluteAngle = beta - relativeAngle;
-	switch(plane)
+	double radius(sqrt((center1 - startPos1) * (center1 - startPos1) + (center2 - startPos2) * (center2 - startPos2)));
+	double relativeAngle(CurrentDistance / radius);
+	double beta((startPos2 - center2) > 0 ? acos((startPos1 - center1) / radius) : -acos((startPos1 - center1) / radius));
+	double absoluteAngle; 
+	if (angle>0)
 	{
-	case ROCKS_PLANE_XY:
-		pPosition[0] = center1 + radius * cos(absoluteAngle);
-		pPosition[1] = center2 + radius * sin(absoluteAngle);
-		pPosition[2] = 0;
+		absoluteAngle = beta - relativeAngle;
 
-		pVelocity[0] =  CurrentVelocity * sin(absoluteAngle);
-		pVelocity[1] = -CurrentVelocity * cos(absoluteAngle);
-		pVelocity[2] =  0;
-		break;
-	case ROCKS_PLANE_YZ:
-		pPosition[1] = center1 + radius * cos(absoluteAngle);
-		pPosition[2] = center2 + radius * sin(absoluteAngle);
-		pPosition[0] = 0;
+		switch(plane)
+		{
+		case ROCKS_PLANE_XY:
+			pPosition[0] =  center1 + radius * cos(absoluteAngle);
+			pPosition[1] =  center2 + radius * sin(absoluteAngle);
+			pPosition[2] =  0;
 
-		pVelocity[1] =  CurrentVelocity * sin(absoluteAngle);
-		pVelocity[2] = -CurrentVelocity * cos(absoluteAngle);
-		pVelocity[0] =  0;
-		break;
-	case ROCKS_PLANE_ZX:
-		pPosition[0] = center1 + radius * cos(absoluteAngle);
-		pPosition[2] = center2 + radius * sin(absoluteAngle);
-		pPosition[1] = 0;
+			pVelocity[0] =  CurrentVelocity * sin(absoluteAngle);
+			pVelocity[1] = -CurrentVelocity * cos(absoluteAngle);
+			pVelocity[2] =  0;
+			break;
+		case ROCKS_PLANE_YZ:
+			pPosition[1] =  center1 + radius * cos(absoluteAngle);
+			pPosition[2] =  center2 + radius * sin(absoluteAngle);
+			pPosition[0] =  0;
 
-		pVelocity[0] =  CurrentVelocity * sin(absoluteAngle);
-		pVelocity[2] = -CurrentVelocity * cos(absoluteAngle);
-		pVelocity[1] =  0;
-		break;
-	default:
-		break;
+			pVelocity[1] =  CurrentVelocity * sin(absoluteAngle);
+			pVelocity[2] = -CurrentVelocity * cos(absoluteAngle);
+			pVelocity[0] =  0;
+			break;
+		case ROCKS_PLANE_ZX:
+			pPosition[0] =  center1 + radius * cos(absoluteAngle);
+			pPosition[2] =  center2 + radius * sin(absoluteAngle);
+			pPosition[1] =  0;
+
+			pVelocity[0] =  CurrentVelocity * sin(absoluteAngle);
+			pVelocity[2] = -CurrentVelocity * cos(absoluteAngle);
+			pVelocity[1] =  0;
+			break;
+		default: 
+			break;
+		}
 	}
+	else
+	{
+		absoluteAngle = beta + relativeAngle;
+
+		switch(plane)
+		{
+		case ROCKS_PLANE_XY:
+			pPosition[0] =  center1 + radius * cos(absoluteAngle);
+			pPosition[1] =  center2 + radius * sin(absoluteAngle);
+			pPosition[2] =  0;
+
+			pVelocity[0] = -CurrentVelocity * sin(absoluteAngle);
+			pVelocity[1] =  CurrentVelocity * cos(absoluteAngle);
+			pVelocity[2] =  0;
+			break;
+		case ROCKS_PLANE_YZ:
+			pPosition[1] =  center1 + radius * cos(absoluteAngle);
+			pPosition[2] =  center2 + radius * sin(absoluteAngle);
+			pPosition[0] =  0;
+
+			pVelocity[1] = -CurrentVelocity * sin(absoluteAngle);
+			pVelocity[2] =  CurrentVelocity * cos(absoluteAngle);
+			pVelocity[0] =  0;
+			break;
+		case ROCKS_PLANE_ZX:
+			pPosition[0] =  center1 + radius * cos(absoluteAngle);
+			pPosition[2] =  center2 + radius * sin(absoluteAngle);
+			pPosition[1] =  0;
+
+			pVelocity[0] = -CurrentVelocity * sin(absoluteAngle);
+			pVelocity[2] =  CurrentVelocity * cos(absoluteAngle);
+			pVelocity[1] =  0;
+			break;
+		default:
+			break;
+		}
+	}
+	
 
 	if (pose.r.x)
 	{
@@ -441,6 +483,7 @@ void ConvertCriclePath(double *pStartPos, double &totalAngle, double &CurrentDis
 	}
 
 }
+
 void ConverLinePath(ROCKS_PLANE &plane, ROCKS_POSE &pose, double &startPos1, double &endPose1, double &startPos2, double &endPose2 , double &CurrentDistance, double &CurrentVelocity, double *pPosition, double *pVelocity)
 {
 	double distance = sqrt((endPose1 - startPos1) * (endPose1 - startPos1) + (endPose2 - startPos2) * (endPose2 - startPos2));
@@ -541,14 +584,18 @@ void DeltaPath2WorldCoordinate(ROCKS_MECH* pMech, uint32_t &index, double *pPosi
 
 	if (pMech->var.moveType == ROCKS_MOVE_TYPE_MIX)
 	{
+		if (index == 0)
+		{
+			mix_Boundary = 0;
+		}
 		if (index == mix_Boundary)
 		{
-			if (pMech->var.pVelocitySplineBuffer[index] == 0 && pMech->var.pPositionSplineBuffer[index] == 0)//包尾
-			{
-				mix_Boundary = 0;
-				index =  pMech->var.usedNrOfSplines;
-				return;
-			}
+// 			if (pMech->var.pVelocitySplineBuffer[index] == 0 && pMech->var.pPositionSplineBuffer[index] == 0)//包尾
+// 			{
+// 				mix_Boundary = 0;
+// 				index =  pMech->var.usedNrOfSplines;
+// 				return;
+// 			}
 
 			mix_Boundary = pMech->var.pVelocitySplineBuffer[index + 3] + index +7;
 			switch ((int)(pMech->var.pPositionSplineBuffer[index + 3]) / 256)
@@ -676,7 +723,7 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 	{
 		pMech->var.pJointPositionBufferC[ax] = (double*)malloc(pMech->var.maxNrOfSplines * sizeof(double));
 		pMech->var.pJointVelocityBufferC[ax] = (double*)malloc(pMech->var.maxNrOfSplines * sizeof(double));
-		if(++ax == pMech->nrOfJoints) 
+		if(++ax == ROCKS_MECH_MAX_NR_OF_JOINTS) 
 		{
 			pMech->var.jointBuffersAllocated = TRUE;
 			pMech->var.pApplyForwardKinFunc = RocksKinForwardDelta;
@@ -688,40 +735,48 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 	double pos_joint_x, pos_joint_y, pos_joint_z;//joint angle(JA)
 	double vel_joint_x, vel_joint_y, vel_joint_z;//joint angular velocity(JAV)
 
-	realSegNum = 0;
+	uint32_t realSegNum = 0;
+	double (*pPosition)[3] = new double[pMech->var.maxNrOfSplines][3];
+	double (*pVelocity)[3] = new double[pMech->var.maxNrOfSplines][3];
+
 	for (uint32_t index = 0; index < pMech->var.usedNrOfSplines; ++index)
 	{
-		DeltaPath2WorldCoordinate(pMech, index, position[realSegNum], velocity[realSegNum]);
+		DeltaPath2WorldCoordinate(pMech, index, pPosition[realSegNum], pVelocity[realSegNum]);
 		realSegNum++;
 	}
 
 	pMech->var.usedNrOfSplines = realSegNum - 1;
 
-	ofstream file("..//xyzDatas.txt");	
-	file<<m_mech.var.startPos[0]<< " "<<m_mech.var.startPos[1]<<" "<<m_mech.var.startPos[2]<<endl;
-	file<<"|Index|x|y|z|x|y|z|"<<endl<<"|:-:|:-:|:-:|:-:|:-:|:-:|:-:|"<<endl;
-	for (uint32_t i = 0; i < realSegNum; ++i)
-	{
-		file<<"|"<<i<<"|"<<position[i][0]<<"|"<<position[i][1]<<"|"<<position[i][2]<<"|"<<velocity[i][0]<<"|"<<velocity[i][1]<<"|"<<velocity[i][2]<<"|"<<endl;
-	}
-	file.close();
-
 	for(uint32_t index = 0; index < realSegNum; ++index)
 	{
-		delta_calcInverse(position[index][0], position[index][1], position[index][2], pos_joint_x, pos_joint_y, pos_joint_z);
+		if(delta_calcInverse(pPosition[index][0], pPosition[index][1], pPosition[index][2], pos_joint_x, pos_joint_y, pos_joint_z) != 0)
+			return ROCKS_ERR_NO_VALID_PATH;
 
 		//convert the JA to joint position(JP)
 		pMech->var.pJointPositionBufferC[0][index] = pos_joint_x * rate_angle2pu;
 		pMech->var.pJointPositionBufferC[1][index] = pos_joint_y * rate_angle2pu;
 		pMech->var.pJointPositionBufferC[2][index] = pos_joint_z * rate_angle2pu;
 
-		delta_velInverse(position[index][0], position[index][1], position[index][2], velocity[index][0], velocity[index][1], velocity[index][2], pos_joint_x, pos_joint_y, pos_joint_z, vel_joint_x, vel_joint_y, vel_joint_z);
+		if(delta_velInverse(pPosition[index][0], pPosition[index][1], pPosition[index][2], pVelocity[index][0], pVelocity[index][1], pVelocity[index][2], pos_joint_x, pos_joint_y, pos_joint_z, vel_joint_x, vel_joint_y, vel_joint_z) != 0)
+			return ROCKS_ERR_NO_VALID_PATH;
 
 		//convert the JAV to joint velocity(JV)
 		pMech->var.pJointVelocityBufferC[0][index] = vel_joint_x * rate_angle2pu;
 		pMech->var.pJointVelocityBufferC[1][index] = vel_joint_y * rate_angle2pu;
 		pMech->var.pJointVelocityBufferC[2][index] = vel_joint_z * rate_angle2pu;
 	}
+
+	ofstream file("..//xyz&jointDatas.txt");	
+	file<<m_mech.var.startPos[0]<< " "<<m_mech.var.startPos[1]<<" "<<m_mech.var.startPos[2]<<endl;
+	file<<"|Index|x_pos|y_pos|z_pos|x_vel|y_vel|z_vel|joint1_pos|joint2_pos|joint3_pos|joint1_vel|joint2_vel|joint3_vel|"<<endl<<"|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|"<<endl;
+	for (uint32_t i = 0; i < realSegNum; ++i)
+	{
+		file<<"|"<<i<<"|"<<pPosition[i][0]<<"|"<<pPosition[i][1]<<"|"<<pPosition[i][2]<<"|"<<pVelocity[i][0]<<"|"<<pVelocity[i][1]<<"|"<<pVelocity[i][2]<<"|"<<pMech->var.pJointPositionBufferC[0][i]<<"|"<<pMech->var.pJointPositionBufferC[1][i]<<"|"<<pMech->var.pJointPositionBufferC[2][i]<<"|"<<pMech->var.pJointVelocityBufferC[0][i]<<"|"<<pMech->var.pJointVelocityBufferC[1][i]<<"|"<<pMech->var.pJointVelocityBufferC[2][i]<<"|"<<endl;
+	}
+	file.close();
+
+	delete []pPosition;
+	delete []pVelocity;
 
 	pMech->var.mechStep = ROCKS_MECH_STEP_VALID_INV_KINEMATICS;
 	return NYCE_OK;
@@ -811,22 +866,32 @@ void RocksPathHandle()
 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSineAccCircle( &m_mech, &sineAccPars );
 		break;//case 0://圆周路径
 	case 1://门形路径
+// 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentStart(&m_mech,&segStartPars);
+// 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentLine(&m_mech,&segLinePars1);
+// 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentArc(&m_mech,&segArcPars1);
+// 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentLine(&m_mech,&segLinePars2);
+// 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentArc(&m_mech,&segArcPars2);
+// 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentLine(&m_mech,&segLinePars3);
+// 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentArc(&m_mech,&segArcPars3);
+// 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentLine(&m_mech,&segLinePars4);
+// 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentArc(&m_mech,&segArcPars4);
+// 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentLine(&m_mech,&segLinePars5);
+
 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentStart(&m_mech,&segStartPars);
 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentLine(&m_mech,&segLinePars1);
 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentArc(&m_mech,&segArcPars1);
 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentLine(&m_mech,&segLinePars2);
-		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentArc(&m_mech,&segArcPars2);
 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentLine(&m_mech,&segLinePars3);
-		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentArc(&m_mech,&segArcPars3);
+		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentArc(&m_mech,&segArcPars2);
 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentLine(&m_mech,&segLinePars4);
-		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentArc(&m_mech,&segArcPars4);
-		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentLine(&m_mech,&segLinePars5);
 		break;
+	case 2://优化门型
+		
 	default:
 		break;
 	}
 
-	ofstream file("..//SplineDatas.txt");	
+	ofstream file("..//TrajectoryDatas.txt");	
 	file<<m_mech.var.startPos[0]<< " "<<m_mech.var.startPos[1]<<" "<<m_mech.var.startPos[2]<<endl;
 	file<<"|Index|TCPP|TCVP|"<<endl<<"|:-:|:-:|:-:|"<<endl;
 	for (uint32_t i = 0; i < m_mech.var.usedNrOfSplines; ++i)
@@ -846,20 +911,25 @@ void RocksPathHandle()
 const double SPLINE_TIME = 0.0002;
 
 const double HOME_SPEED = 300;
-const double HOME_OFFEST_X = 40;
+const double HOME_OFFEST_X = 60;
 const double HOME_OFFEST_Y = 0;
 const double HOME_OFFEST_Z = 20;
 
 const double CRICLE_SPEED = 500;
-const double CRICLE_CENTER_OFFSET_1 = -30;
+const double CRICLE_CENTER_OFFSET_1 = -60;
 const double CRICLE_CENTER_OFFSET_2 = 0;
 const double CRICLE_ANGLE = M_PI * 20;
 const ROCKS_PLANE CRICLE_PLANE = ROCKS_PLANE_XY;
 
-const double DOOR_SPEED = 100;
+const double DOOR_SPEED = 500;
 const double DOOR_HEIGHT = 20;
 const double DOOR_WIDTH = 20;
 const double DOOR_FILLET = 40;
+
+const double OPT_DOOR_POINT_1[3] = {-65,0,-220};
+const double OPT_DOOR_POINT_2[3] = {-25,0,-170};
+const double OPT_DOOR_POINT_3[3] = { 25,0,-170};
+const double OPT_DOOR_POINT_4[3] = { 65,0,-220};													
 
 BOOL RocksGotoReadyPosition()
 {
@@ -874,6 +944,49 @@ BOOL RocksGotoReadyPosition()
 	sinePtpPars.endPos[0] = readyTcp[0] + HOME_OFFEST_X;
 	sinePtpPars.endPos[1] = readyTcp[1] + HOME_OFFEST_Y;
 	sinePtpPars.endPos[2] = readyTcp[2] + HOME_OFFEST_Z;
+	sinePtpPars.endPos[3] = 0;
+	sinePtpPars.endPos[4] = 0;
+	sinePtpPars.endPos[5] = 0;
+	sinePtpPars.maxVelocity = HOME_SPEED;
+	sinePtpPars.maxAcceleration = HOME_SPEED * 10;
+	sinePtpPars.splineTime = SPLINE_TIME;
+	sinePtpPars.maxNrOfSplines = 0;
+	sinePtpPars.pPositionSplineBuffer = NULL;
+	sinePtpPars.pVelocitySplineBuffer = NULL;
+
+	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSineAccPtp(&m_mech,&sinePtpPars);
+
+	for (int ax = 0; ax < NUM_AXES; ++ax)
+	{
+		kinPars.pJointPositionBuffer[ ax ] = NULL;
+		kinPars.pJointVelocityBuffer[ ax ] = NULL;
+	}
+	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinInverseDelta( &m_mech, &kinPars );
+
+	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksStream( &m_mech );	
+
+	// Synchronize on motion complete
+	// ------------------------------
+	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksStreamSynchronize( &m_mech, SAC_INDEFINITE);
+
+	if (NyceError( nyceStatus ))
+	{
+		HandleError(nyceStatus, "Rocks");
+		SetEvent(hEvStop);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+BOOL RocksGotoReadyPosition(const double readyTcp[])
+{
+	ROCKS_TRAJ_SINE_ACC_PTP_PARS sinePtpPars;
+
+	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinDeltaPosition(&m_mech, sinePtpPars.startPos);
+	sinePtpPars.endPos[0] = readyTcp[0];
+	sinePtpPars.endPos[1] = readyTcp[1];
+	sinePtpPars.endPos[2] = readyTcp[2];
 	sinePtpPars.endPos[3] = 0;
 	sinePtpPars.endPos[4] = 0;
 	sinePtpPars.endPos[5] = 0;
@@ -926,8 +1039,16 @@ BOOL Rocks(void)
 	}
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksMechCreate( &m_mech );
 
-	if (!RocksGotoReadyPosition())
-		return FALSE;
+	if (pathType == 0)
+	{
+		if (!RocksGotoReadyPosition())
+			return FALSE;
+	}
+	else
+	{
+		if (!RocksGotoReadyPosition(OPT_DOOR_POINT_1))
+			return FALSE;
+	}
 
 	// Get current position
 	// --------------------
@@ -979,65 +1100,114 @@ BOOL Rocks(void)
 	// 	segLinePars4.endVelocity = 0;
 	// 	segLinePars4.maxAcceleration = DOOR_SPEED * 10;
 
+
+	//door1
+// 	segLinePars1.plane = ROCKS_PLANE_ZX;
+// 	segLinePars1.endPos[0] = segStartPars.startPos[0] ;
+// 	segLinePars1.endPos[1] = segStartPars.startPos[2] - DOOR_HEIGHT;
+// 	segLinePars1.endVelocity = DOOR_SPEED;
+// 	segLinePars1.maxAcceleration = DOOR_SPEED * 10;
+// 
+// 	segArcPars1.plane = ROCKS_PLANE_ZX;
+// 	segArcPars1.center[0] = segLinePars1.endPos[0] - DOOR_FILLET;
+// 	segArcPars1.center[1] = segLinePars1.endPos[1];
+// 	segArcPars1.endPos[0] = segLinePars1.endPos[0] - DOOR_FILLET;
+// 	segArcPars1.endPos[1] = segLinePars1.endPos[1] - DOOR_FILLET;
+// 	segArcPars1.endVelocity = DOOR_SPEED;
+// 	segArcPars1.maxAcceleration = DOOR_SPEED * 10;
+// 	segArcPars1.positiveAngle = TRUE;
+// 
+// 	segLinePars2.plane = ROCKS_PLANE_ZX;
+// 	segLinePars2.endPos[0] = segArcPars1.endPos[0] - DOOR_WIDTH;
+// 	segLinePars2.endPos[1] = segArcPars1.endPos[1];
+// 	segLinePars2.endVelocity = DOOR_SPEED;
+// 	segLinePars2.maxAcceleration = DOOR_SPEED * 10;
+// 
+// 	segArcPars2.plane = ROCKS_PLANE_ZX;
+// 	segArcPars2.center[0] = segLinePars2.endPos[0] ;
+// 	segArcPars2.center[1] = segLinePars2.endPos[1] + DOOR_FILLET;
+// 	segArcPars2.endPos[0] = segLinePars2.endPos[0] - DOOR_FILLET;
+// 	segArcPars2.endPos[1] = segLinePars2.endPos[1] + DOOR_FILLET;
+// 	segArcPars2.endVelocity = DOOR_SPEED;
+// 	segArcPars2.maxAcceleration = DOOR_SPEED * 10;
+// 	segArcPars2.positiveAngle = TRUE;
+// 
+// 	segLinePars3.plane = ROCKS_PLANE_ZX;
+// 	segLinePars3.endPos[0] = segArcPars2.endPos[0];
+// 	segLinePars3.endPos[1] = segArcPars2.endPos[1] + DOOR_HEIGHT;
+// 	segLinePars3.endVelocity = DOOR_SPEED;
+// 	segLinePars3.maxAcceleration = DOOR_SPEED * 10;
+// 
+// 	segArcPars3.plane = ROCKS_PLANE_ZX;
+// 	segArcPars3.center[0] = segLinePars3.endPos[0] + DOOR_FILLET;
+// 	segArcPars3.center[1] = segLinePars3.endPos[1];
+// 	segArcPars3.endPos[0] = segLinePars3.endPos[0] + DOOR_FILLET;
+// 	segArcPars3.endPos[1] = segLinePars3.endPos[1] + DOOR_FILLET;
+// 	segArcPars3.endVelocity = DOOR_SPEED;
+// 	segArcPars3.maxAcceleration = DOOR_SPEED * 10;
+// 	segArcPars3.positiveAngle = TRUE;
+// 
+// 	segLinePars4.plane = ROCKS_PLANE_ZX;
+// 	segLinePars4.endPos[0] = segArcPars3.endPos[0] + DOOR_WIDTH;
+// 	segLinePars4.endPos[1] = segArcPars3.endPos[1];
+// 	segLinePars4.endVelocity = DOOR_SPEED;
+// 	segLinePars4.maxAcceleration = DOOR_SPEED * 10;
+// 
+// 	segArcPars4.plane = ROCKS_PLANE_ZX;
+// 	segArcPars4.center[0] = segLinePars4.endPos[0];
+// 	segArcPars4.center[1] = segLinePars4.endPos[1] - DOOR_FILLET;
+// 	segArcPars4.endPos[0] = segLinePars4.endPos[0] + DOOR_FILLET;
+// 	segArcPars4.endPos[1] = segLinePars4.endPos[1] - DOOR_FILLET;
+// 	segArcPars4.endVelocity = 0;
+// 	segArcPars4.maxAcceleration = DOOR_SPEED * 10;
+// 	segArcPars4.positiveAngle = TRUE;
+
+	//door2
+	double line = sqrt((-138.75 - OPT_DOOR_POINT_2[2]) * (-138.75 - OPT_DOOR_POINT_2[2]) + OPT_DOOR_POINT_2[0] * OPT_DOOR_POINT_2[0]);
+	double z = -(138.75 + line * sqrt(4100.0) / 50);
+	double center[3] = {0,0,z};
+
 	segLinePars1.plane = ROCKS_PLANE_ZX;
-	segLinePars1.endPos[0] = segStartPars.startPos[0] ;
-	segLinePars1.endPos[1] = segStartPars.startPos[2] - DOOR_HEIGHT;
+	segLinePars1.endPos[0] = OPT_DOOR_POINT_2[0];
+	segLinePars1.endPos[1] = OPT_DOOR_POINT_2[2];
 	segLinePars1.endVelocity = DOOR_SPEED;
 	segLinePars1.maxAcceleration = DOOR_SPEED * 10;
 
 	segArcPars1.plane = ROCKS_PLANE_ZX;
-	segArcPars1.center[0] = segLinePars1.endPos[0] - DOOR_FILLET;
-	segArcPars1.center[1] = segLinePars1.endPos[1];
-	segArcPars1.endPos[0] = segLinePars1.endPos[0] - DOOR_FILLET;
-	segArcPars1.endPos[1] = segLinePars1.endPos[1] - DOOR_FILLET;
+	segArcPars1.center[0] = center[0];
+	segArcPars1.center[1] = center[2];
+	segArcPars1.endPos[0] = OPT_DOOR_POINT_3[0];
+	segArcPars1.endPos[1] = OPT_DOOR_POINT_3[2];
 	segArcPars1.endVelocity = DOOR_SPEED;
 	segArcPars1.maxAcceleration = DOOR_SPEED * 10;
 	segArcPars1.positiveAngle = TRUE;
 
 	segLinePars2.plane = ROCKS_PLANE_ZX;
-	segLinePars2.endPos[0] = segArcPars1.endPos[0] - DOOR_WIDTH;
-	segLinePars2.endPos[1] = segArcPars1.endPos[1];
-	segLinePars2.endVelocity = DOOR_SPEED;
+	segLinePars2.endPos[0] = OPT_DOOR_POINT_4[0];
+	segLinePars2.endPos[1] = OPT_DOOR_POINT_4[2];
+	segLinePars2.endVelocity = 0;
 	segLinePars2.maxAcceleration = DOOR_SPEED * 10;
 
-	segArcPars2.plane = ROCKS_PLANE_ZX;
-	segArcPars2.center[0] = segLinePars2.endPos[0] ;
-	segArcPars2.center[1] = segLinePars2.endPos[1] + DOOR_FILLET;
-	segArcPars2.endPos[0] = segLinePars2.endPos[0] - DOOR_FILLET;
-	segArcPars2.endPos[1] = segLinePars2.endPos[1] + DOOR_FILLET;
-	segArcPars2.endVelocity = DOOR_SPEED;
-	segArcPars2.maxAcceleration = DOOR_SPEED * 10;
-	segArcPars2.positiveAngle = TRUE;
-
 	segLinePars3.plane = ROCKS_PLANE_ZX;
-	segLinePars3.endPos[0] = segArcPars2.endPos[0];
-	segLinePars3.endPos[1] = segArcPars2.endPos[1] + DOOR_HEIGHT;
+	segLinePars3.endPos[0] = OPT_DOOR_POINT_3[0];
+	segLinePars3.endPos[1] = OPT_DOOR_POINT_3[2];
 	segLinePars3.endVelocity = DOOR_SPEED;
 	segLinePars3.maxAcceleration = DOOR_SPEED * 10;
 
-	segArcPars3.plane = ROCKS_PLANE_ZX;
-	segArcPars3.center[0] = segLinePars3.endPos[0] + DOOR_FILLET;
-	segArcPars3.center[1] = segLinePars3.endPos[1];
-	segArcPars3.endPos[0] = segLinePars3.endPos[0] + DOOR_FILLET;
-	segArcPars3.endPos[1] = segLinePars3.endPos[1] + DOOR_FILLET;
-	segArcPars3.endVelocity = DOOR_SPEED;
-	segArcPars3.maxAcceleration = DOOR_SPEED * 10;
-	segArcPars3.positiveAngle = TRUE;
+	segArcPars2.plane = ROCKS_PLANE_ZX;
+	segArcPars2.center[0] = center[0];
+	segArcPars2.center[1] = center[2];
+	segArcPars2.endPos[0] = OPT_DOOR_POINT_2[0];
+	segArcPars2.endPos[1] = OPT_DOOR_POINT_2[2];
+	segArcPars2.endVelocity = DOOR_SPEED;
+	segArcPars2.maxAcceleration = DOOR_SPEED * 10;
+	segArcPars2.positiveAngle = FALSE;
 
 	segLinePars4.plane = ROCKS_PLANE_ZX;
-	segLinePars4.endPos[0] = segArcPars3.endPos[0] + DOOR_WIDTH;
-	segLinePars4.endPos[1] = segArcPars3.endPos[1];
-	segLinePars4.endVelocity = DOOR_SPEED;
+	segLinePars4.endPos[0] = OPT_DOOR_POINT_1[0];
+	segLinePars4.endPos[1] = OPT_DOOR_POINT_1[2];
+	segLinePars4.endVelocity = 0;
 	segLinePars4.maxAcceleration = DOOR_SPEED * 10;
-
-	segArcPars4.plane = ROCKS_PLANE_ZX;
-	segArcPars4.center[0] = segLinePars4.endPos[0];
-	segArcPars4.center[1] = segLinePars4.endPos[1] - DOOR_FILLET;
-	segArcPars4.endPos[0] = segLinePars4.endPos[0] + DOOR_FILLET;
-	segArcPars4.endPos[1] = segLinePars4.endPos[1] - DOOR_FILLET;
-	segArcPars4.endVelocity = 0;
-	segArcPars4.maxAcceleration = DOOR_SPEED * 10;
-	segArcPars4.positiveAngle = TRUE;
 
 	// 	segLinePars5.plane = ROCKS_PLANE_ZX;
 	// 	segLinePars5.endPos[0] = segArcPars4.endPos[0];
@@ -1052,12 +1222,12 @@ BOOL Rocks(void)
 	rocksPose.r.z = 0;
 
 	double buffer[3];
-	buffer[0] = sineAccPars.startPos[0];
+	buffer[0] = sineAccPars.startPos[0]; 
 	buffer[1] = sineAccPars.startPos[1];
 	buffer[2] = sineAccPars.startPos[2];
 	Roll(buffer,rocksPose.r.x);
 
-	rocksPose.t.x = sineAccPars.startPos[0] - buffer[0];
+	rocksPose.t.x = sineAccPars.startPos[0] - buffer[0]; 
 	rocksPose.t.y = sineAccPars.startPos[1] - buffer[1];
 	rocksPose.t.z = sineAccPars.startPos[2] - buffer[2];
 
@@ -1089,6 +1259,7 @@ void OnInterpolantEvent( NYCE_ID nyceId, NYCE_EVENT eventId, NYCE_EVENT_DATA *pE
 int programState = 0;
 uint32_t varIndex = 0;
 unsigned uThreadRocks = 0;
+double postion[3];
 
 void StateHandle()
 {
