@@ -15,13 +15,13 @@ double mix_startPos1, mix_endPos1, mix_startPos2, mix_endPos2, mix_center1, mix_
 void ConvertCriclePath(ROCKS_PLANE &plane, ROCKS_POSE &pose, double &startPos1, double &startPos2, double &center1, double &center2, double &angle, double &CurrentDistance, double &CurrentVelocity, double *pPosition, double *pVelocity)
 {
 	double radius = sqrt((center1 - startPos1) * (center1 - startPos1) + (center2 - startPos2) * (center2 - startPos2));
-	double relativeAngle = CurrentDistance / radius;
-	double alhpa = acos((startPos1 - center1) / radius);
-	double beta = (startPos2 - center2) > 0 ? alhpa : - alhpa;
+	double beta(0.0);
+	CalcRotateAngle(beta, center1, center2, startPos1, startPos2);
+
 	double absoluteAngle;
 	if (angle>0)
 	{
-		absoluteAngle = beta - relativeAngle;
+		absoluteAngle = beta - CurrentDistance / radius;
 
 		switch(plane)
 		{
@@ -58,7 +58,7 @@ void ConvertCriclePath(ROCKS_PLANE &plane, ROCKS_POSE &pose, double &startPos1, 
 	}
 	else
 	{
-		absoluteAngle = beta + relativeAngle;
+		absoluteAngle = beta + CurrentDistance / radius;
 
 		switch(plane)
 		{
@@ -120,15 +120,12 @@ void ConvertCriclePath(ROCKS_PLANE &plane, ROCKS_POSE &pose, double &startPos1, 
 
 void ConvertCriclePath(double *pStartPos, double &totalAngle, double &CurrentDistance, double &CurrentVelocity, ROCKS_PLANE &plane, double &radius, double *pCenter, double *pPosition, double *pVelocity)
 {
-	double angle;
-	double alhpa;
-	double beta ;
+	double angle(0.0);
+	double beta(0.0);
 	switch(plane)
 	{
 	case ROCKS_PLANE_XY:
-		//这个只需计算一次！！！
-		alhpa = acos((pStartPos[0] - pCenter[0]) / sqrt((pStartPos[0] - pCenter[0]) * (pStartPos[0] - pCenter[0]) + (pStartPos[1] - pCenter[1]) * (pStartPos[1] - pCenter[1])));
-		beta = pCenter[1] < 0 ? alhpa : M_PI * 2 - alhpa;
+		CalcRotateAngle(beta, pCenter[0], pCenter[1], pStartPos[0], pStartPos[1]);
 
 		if (totalAngle > 0)
 			angle = beta - CurrentDistance / radius;
@@ -153,8 +150,8 @@ void ConvertCriclePath(double *pStartPos, double &totalAngle, double &CurrentDis
 		}
 		break;
 	case ROCKS_PLANE_YZ:
-		alhpa = acos((pStartPos[1] - pCenter[0]) / sqrt((pStartPos[1] - pCenter[0]) * (pStartPos[1] - pCenter[0]) + (pStartPos[2] - pCenter[1]) * (pStartPos[2] - pCenter[1])));
-		beta = pCenter[1] < 0 ? alhpa : M_PI * 2 - alhpa;
+		CalcRotateAngle(beta, pCenter[0], pCenter[1], pStartPos[1], pStartPos[2]);
+
 		if (totalAngle > 0)
 			angle = beta - CurrentDistance / radius;
 		else
@@ -178,8 +175,8 @@ void ConvertCriclePath(double *pStartPos, double &totalAngle, double &CurrentDis
 		}
 		break;
 	case ROCKS_PLANE_ZX:
-		alhpa = acos((pStartPos[2] - pCenter[0]) / sqrt((pStartPos[2] - pCenter[0]) * (pStartPos[2] - pCenter[0]) + (pStartPos[0] - pCenter[1]) * (pStartPos[0] - pCenter[1])));
-		beta = pCenter[1] < 0 ? alhpa : M_PI * 2 - alhpa;
+		CalcRotateAngle(beta, pCenter[0], pCenter[1], pStartPos[2], pStartPos[0]);
+
 		if (totalAngle > 0)
 			angle = beta - CurrentDistance / radius;
 		else
@@ -306,13 +303,6 @@ void ConvertPathToWorldCoordinate(ROCKS_MECH* pMech, uint32_t &index, double *pP
 		}
 		if (index == mix_Boundary)
 		{
-			// 			if (pMech->var.pVelocitySplineBuffer[index] == 0 && pMech->var.pPositionSplineBuffer[index] == 0)//包尾
-			// 			{
-			// 				mix_Boundary = 0;
-			// 				index =  pMech->var.usedNrOfSplines;
-			// 				return;
-			// 			}
-
 			mix_Boundary = (uint32_t)(pMech->var.pVelocitySplineBuffer[index + 3] + index + 7);
 			switch ((int)(pMech->var.pPositionSplineBuffer[index + 3]) / 256)
 			{

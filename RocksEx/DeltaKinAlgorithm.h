@@ -81,7 +81,7 @@ BOOL DeltaCalcAngleYZ(const DELTA_MECH_PARS &deltaMechPars, const double &x, con
 		return FALSE; // non-existing point
 	double yj((-deltaMechPars.f - a * b - sqrt(d)) / (b * b + 1)); // choosing outer point
 	double zj(a + b * yj);
-	theta = atan(zj / (yj + deltaMechPars.f));
+	theta = atan(zj / (yj + deltaMechPars.f));//range of ¨C¦Ð/2 to ¦Ð/2 radians. good choice.
 	return TRUE;
 } 
 

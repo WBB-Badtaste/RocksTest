@@ -120,6 +120,10 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 	{
 		pMech->var.pJointPositionBufferC[ax] = (double*)malloc(pMech->var.maxNrOfSplines * sizeof(double));
 		pMech->var.pJointVelocityBufferC[ax] = (double*)malloc(pMech->var.maxNrOfSplines * sizeof(double));
+
+		ZeroMemory(pMech->var.pJointPositionBufferC[ax], pMech->var.maxNrOfSplines * sizeof(double));
+		ZeroMemory(pMech->var.pJointVelocityBufferC[ax], pMech->var.maxNrOfSplines * sizeof(double));
+
 		if(++ax == ROCKS_MECH_MAX_NR_OF_JOINTS) 
 		{
 			pMech->var.jointBuffersAllocated = TRUE;
@@ -130,8 +134,8 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 	}
 
 	uint32_t realSegNum = 0;
-	double (*pPosition)[ROCKS_MECH_MAX_DOF] = new double[pMech->var.maxNrOfSplines][ROCKS_MECH_MAX_DOF];
-	double (*pVelocity)[ROCKS_MECH_MAX_DOF] = new double[pMech->var.maxNrOfSplines][ROCKS_MECH_MAX_DOF];
+	double (*pPosition)[ROCKS_MECH_MAX_DOF] = new double[pMech->var.maxNrOfSplines][ROCKS_MECH_MAX_DOF]();
+	double (*pVelocity)[ROCKS_MECH_MAX_DOF] = new double[pMech->var.maxNrOfSplines][ROCKS_MECH_MAX_DOF]();
 
 	for (uint32_t index = 0; index < pMech->var.usedNrOfSplines; ++index)
 	{
@@ -140,6 +144,7 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 	}
 
 	pMech->var.usedNrOfSplines = realSegNum - 1;
+	
 
 	double jointAnglePos[ROCKS_MECH_MAX_NR_OF_JOINTS];
 	double jointAngleVel[ROCKS_MECH_MAX_NR_OF_JOINTS];
@@ -160,8 +165,16 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 
 	if (WaitForSingleObject(evExportDatas, 0) == WAIT_OBJECT_0 )
 	{
+		ofstream file1("..//trajectoryDatas.txt");	
+		file1<<"|Index|pVelocitySplineBuffer|pPositionSplineBuffer"<<endl<<"|:-:|:-:|:-:"<<endl;
+		for (uint32_t i = 0; i < pMech->var.usedNrOfSplines; ++i)
+		{
+			file1<<"|"<<i<<"|"<<pMech->var.pVelocitySplineBuffer[i]<<"|"<<pMech->var.pPositionSplineBuffer[i]<<endl;
+		}
+		file1.close();
+
 		ofstream file("..//xyz&jointDatas.txt");	
-		file<<pMech->var.startPos[0]<< " "<<pMech->var.startPos[1]<<" "<<pMech->var.startPos[2]<<endl;
+		file<<pMech->var.startPos[0]<<"|"<<pMech->var.startPos[1]<<"|"<<pMech->var.startPos[2]<<endl;
 		file<<"|Index|x_pos|y_pos|z_pos|x_vel|y_vel|z_vel|joint1_pos|joint2_pos|joint3_pos|joint1_vel|joint2_vel|joint3_vel|"<<endl<<"|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|"<<endl;
 		for (uint32_t i = 0; i < realSegNum; ++i)
 		{
