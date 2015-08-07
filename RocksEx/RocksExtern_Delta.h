@@ -133,19 +133,26 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 		}
 	}
 
-	uint32_t realSegNum = 0;
+	uint32_t realSegNum(0);
 	double (*pPosition)[ROCKS_MECH_MAX_DOF] = new double[pMech->var.maxNrOfSplines][ROCKS_MECH_MAX_DOF]();
 	double (*pVelocity)[ROCKS_MECH_MAX_DOF] = new double[pMech->var.maxNrOfSplines][ROCKS_MECH_MAX_DOF]();
 
-	for (uint32_t index = 0; index < pMech->var.usedNrOfSplines; ++index)
+	if (WaitForSingleObject(evExportDatas, 0) == WAIT_OBJECT_0 )
 	{
-		ConvertPathToWorldCoordinate(pMech, index, pPosition[realSegNum], pVelocity[realSegNum]);
-		realSegNum++;
+		ofstream file("..//trajectoryDatas.txt");	
+		file<<"|Index|pVelocitySplineBuffer|pPositionSplineBuffer"<<endl<<"|:-:|:-:|:-:"<<endl;
+		for (uint32_t i = 0; i < pMech->var.usedNrOfSplines; ++i)
+		{
+			file<<"|"<<i<<"|"<<pMech->var.pVelocitySplineBuffer[i]<<"|"<<pMech->var.pPositionSplineBuffer[i]<<endl;
+		}
+		file.close();
 	}
-
-	pMech->var.usedNrOfSplines = realSegNum - 1;
 	
-
+	for (uint32_t index = 0; index < pMech->var.usedNrOfSplines; ++index, ++realSegNum)
+		ConvertPathToWorldCoordinate(pMech, index, pPosition[realSegNum], pVelocity[realSegNum]);
+		
+	pMech->var.usedNrOfSplines = realSegNum;
+	
 	double jointAnglePos[ROCKS_MECH_MAX_NR_OF_JOINTS];
 	double jointAngleVel[ROCKS_MECH_MAX_NR_OF_JOINTS];
 	for(uint32_t index = 0; index < realSegNum; ++index)
@@ -165,14 +172,6 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 
 	if (WaitForSingleObject(evExportDatas, 0) == WAIT_OBJECT_0 )
 	{
-		ofstream file1("..//trajectoryDatas.txt");	
-		file1<<"|Index|pVelocitySplineBuffer|pPositionSplineBuffer"<<endl<<"|:-:|:-:|:-:"<<endl;
-		for (uint32_t i = 0; i < pMech->var.usedNrOfSplines; ++i)
-		{
-			file1<<"|"<<i<<"|"<<pMech->var.pVelocitySplineBuffer[i]<<"|"<<pMech->var.pPositionSplineBuffer[i]<<endl;
-		}
-		file1.close();
-
 		ofstream file("..//xyz&jointDatas.txt");	
 		file<<pMech->var.startPos[0]<<"|"<<pMech->var.startPos[1]<<"|"<<pMech->var.startPos[2]<<endl;
 		file<<"|Index|x_pos|y_pos|z_pos|x_vel|y_vel|z_vel|joint1_pos|joint2_pos|joint3_pos|joint1_vel|joint2_vel|joint3_vel|"<<endl<<"|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|"<<endl;

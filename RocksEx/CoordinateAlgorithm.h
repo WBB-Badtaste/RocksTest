@@ -17,6 +17,7 @@ void ConvertCriclePath(ROCKS_PLANE &plane, ROCKS_POSE &pose, double &startPos1, 
 	double radius = sqrt((center1 - startPos1) * (center1 - startPos1) + (center2 - startPos2) * (center2 - startPos2));
 	double beta(0.0);
 	CalcRotateAngle(beta, center1, center2, startPos1, startPos2);
+	beta = -beta;
 
 	double absoluteAngle;
 	if (angle>0)
@@ -126,6 +127,7 @@ void ConvertCriclePath(double *pStartPos, double &totalAngle, double &CurrentDis
 	{
 	case ROCKS_PLANE_XY:
 		CalcRotateAngle(beta, pCenter[0], pCenter[1], pStartPos[0], pStartPos[1]);
+		beta = -beta;
 
 		if (totalAngle > 0)
 			angle = beta - CurrentDistance / radius;
@@ -151,6 +153,7 @@ void ConvertCriclePath(double *pStartPos, double &totalAngle, double &CurrentDis
 		break;
 	case ROCKS_PLANE_YZ:
 		CalcRotateAngle(beta, pCenter[0], pCenter[1], pStartPos[1], pStartPos[2]);
+		beta = -beta;
 
 		if (totalAngle > 0)
 			angle = beta - CurrentDistance / radius;
@@ -176,6 +179,7 @@ void ConvertCriclePath(double *pStartPos, double &totalAngle, double &CurrentDis
 		break;
 	case ROCKS_PLANE_ZX:
 		CalcRotateAngle(beta, pCenter[0], pCenter[1], pStartPos[2], pStartPos[0]);
+		beta = -beta;
 
 		if (totalAngle > 0)
 			angle = beta - CurrentDistance / radius;

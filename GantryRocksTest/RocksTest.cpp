@@ -283,7 +283,7 @@ void ConvertCriclePath(ROCKS_PLANE &plane, ROCKS_POSE &pose, double &startPos1, 
 	double radius(sqrt((center1 - startPos1) * (center1 - startPos1) + (center2 - startPos2) * (center2 - startPos2)));
 	double relativeAngle(CurrentDistance / radius);
 	double beta((startPos2 - center2) > 0 ? acos((startPos1 - center1) / radius) : -acos((startPos1 - center1) / radius));
-	double absoluteAngle;
+	double absoluteAngle; 
 	if (angle>0)
 	{
 		absoluteAngle = beta - relativeAngle;
