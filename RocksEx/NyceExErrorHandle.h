@@ -20,7 +20,10 @@ const char* NyceGetStatusStringEx(NYCE_STATUS statusCode)
 		return "给定的轨迹速度有误。";
 		break;
 	case ROCKS_ERR_DELTA_JOINT_POS_ERROR:
-		return "Delta三个轴的位置不匹配。";
+		return "Delta机器人的三个轴位置不匹配。";
+		break;
+	case ROCKS_ERR_DELTA_POSTURE_ERROR:
+		return "Delta机器人的姿势有问题。";
 		break;
 	default:
 		return NyceGetStatusString(statusCode);

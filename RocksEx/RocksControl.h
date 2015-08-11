@@ -139,23 +139,28 @@ NYCE_STATUS RocksCricleDelta(const CARTESIAN_COORD &centerOffset, const double &
 
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSineAccCircle( &m_mech, &sineAccCirclePars);
 	
+	
+
 	ROCKS_POSE pose;
 	CalcRotateAngle(pose.r.y, -centerOffset.x, -centerOffset.z);
 	pose.r.x = 0;
-	pose.r.y = -pose.r.y;
+	pose.r.y = pose.r.y;
 	pose.r.z = 0;
+	pose.t.x = 0;
+	pose.t.y = 0;
+	pose.t.z = 0;
 
-	double rotatedCenter[3];
-	rotatedCenter[0] = sineAccCirclePars.startPos[0];
-	rotatedCenter[1] = sineAccCirclePars.startPos[1];
-	rotatedCenter[2] = sineAccCirclePars.startPos[2];
-//	Roll(rotatedCenter, pose.r.x);
-	Pitch(rotatedCenter, pose.r.y);
-//	Yaw(rotatedCenter, pose.r.z);
-
-	pose.t.x = sineAccCirclePars.startPos[0] - rotatedCenter[0];
-	pose.t.y = sineAccCirclePars.startPos[1] - rotatedCenter[1];
-	pose.t.z = sineAccCirclePars.startPos[2] - rotatedCenter[2]; 
+// 	double rotatedCenter[3];
+// 	rotatedCenter[0] = sineAccCirclePars.startPos[0];
+// 	rotatedCenter[1] = sineAccCirclePars.startPos[1];
+// 	rotatedCenter[2] = sineAccCirclePars.startPos[2];
+// //	Roll(rotatedCenter, pose.r.x);
+// 	Pitch(rotatedCenter, pose.r.y);
+// //	Yaw(rotatedCenter, pose.r.z);
+// 
+// 	pose.t.x = sineAccCirclePars.startPos[0] - rotatedCenter[0];
+// 	pose.t.y = sineAccCirclePars.startPos[1] - rotatedCenter[1];
+// 	pose.t.z = sineAccCirclePars.startPos[2] - rotatedCenter[2]; 
 
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinMoveOrigin( &m_mech, &pose );
 

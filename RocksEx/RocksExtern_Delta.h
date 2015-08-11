@@ -48,7 +48,10 @@ inline void ConvertAngleToPU(const double &angle, double &positionUnit, const ui
 
 inline void ConvertPUToAngle(const double &positionUnit, double &angle, const uint32_t &index)
 {
-	angle = positionUnit / rate_angle2pu[index];
+	if (rate_angle2pu[index])
+		angle = positionUnit / rate_angle2pu[index];
+	else
+		angle = 0.0;
 }
 
 NYCE_STATUS RocksKinForwardDelta(ROCKS_MECH* pMech, const double pJointPos[], double pMechPos[])
@@ -62,13 +65,15 @@ NYCE_STATUS RocksKinForwardDelta(ROCKS_MECH* pMech, const double pJointPos[], do
 
 	ZeroMemory(pMechPos, sizeof(double) * ROCKS_MECH_MAX_DOF);
 
-	double iointAnglePos[ROCKS_MECH_MAX_NR_OF_JOINTS];
+	double jointAnglePos[ROCKS_MECH_MAX_NR_OF_JOINTS];
 	for (uint32_t ax = 0; ax < ROCKS_MECH_MAX_NR_OF_JOINTS; ax++)
 	{
-		ConvertPUToAngle(pJointPos[ax], iointAnglePos[ax], ax);
+		ConvertPUToAngle(pJointPos[ax], jointAnglePos[ax], ax);
+		if (jointAnglePos[ax] < -M_PI_2 || jointAnglePos[ax] > M_PI_2)
+			return ROCKS_ERR_DELTA_POSTURE_ERROR;
 	}
 
-	if(!DeltaCalcPosForward(delta_mech_pars, iointAnglePos, pMechPos))
+	if(!DeltaCalcPosForward(delta_mech_pars, jointAnglePos, pMechPos))
 		return ROCKS_ERR_DELTA_JOINT_POS_ERROR;
 
 	return NYCE_OK; 

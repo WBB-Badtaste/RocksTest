@@ -12,105 +12,67 @@ ROCKS_POSE mix_pose;
 ROCKS_MOVE_TYPE mix_moveType = ROCKS_MOVE_TYPE_LINEAR;
 double mix_startPos1, mix_endPos1, mix_startPos2, mix_endPos2, mix_center1, mix_center2, mix_angle, mix_endPos_x, mix_endPos_y, mix_endPos_z;
 
-void ConvertCriclePath(ROCKS_PLANE &plane, ROCKS_POSE &pose, double &startPos1, double &startPos2, double &center1, double &center2, double &angle, double &CurrentDistance, double &CurrentVelocity, double *pPosition, double *pVelocity)
+void ConvertCriclePath(const ROCKS_PLANE &plane, const ROCKS_POSE &pose, const double &startPos1, const double &startPos2, const double &center1, const double &center2, const double &angle,const  double &CurrentDistance, const double &CurrentVelocity, double *const pPosition, double *const pVelocity)
 {
 	double radius = sqrt((center1 - startPos1) * (center1 - startPos1) + (center2 - startPos2) * (center2 - startPos2));
 	double beta(0.0);
 	CalcRotateAngle(beta, center1, center2, startPos1, startPos2);
-	beta = -beta;
 
-	double absoluteAngle;
+	double absoluteAngle(0.0), absoluteVelocity(0.0);
 	if (angle>0)
 	{
 		absoluteAngle = beta - CurrentDistance / radius;
-
-		switch(plane)
-		{
-		case ROCKS_PLANE_XY:
-			pPosition[0] = center1 + radius * cos(absoluteAngle);
-			pPosition[1] = center2 + radius * sin(absoluteAngle);
-			pPosition[2] = 0;
-
-			pVelocity[0] =  CurrentVelocity * sin(absoluteAngle);
-			pVelocity[1] = -CurrentVelocity * cos(absoluteAngle);
-			pVelocity[2] =  0;
-			break;
-		case ROCKS_PLANE_YZ:
-			pPosition[1] = center1 + radius * cos(absoluteAngle);
-			pPosition[2] = center2 + radius * sin(absoluteAngle);
-			pPosition[0] = 0;
-
-			pVelocity[1] =  CurrentVelocity * sin(absoluteAngle);
-			pVelocity[2] = -CurrentVelocity * cos(absoluteAngle);
-			pVelocity[0] =  0;
-			break;
-		case ROCKS_PLANE_ZX:
-			pPosition[0] = center1 + radius * cos(absoluteAngle);
-			pPosition[2] = center2 + radius * sin(absoluteAngle);
-			pPosition[1] = 0;
-
-			pVelocity[0] =  CurrentVelocity * sin(absoluteAngle);
-			pVelocity[2] = -CurrentVelocity * cos(absoluteAngle);
-			pVelocity[1] =  0;
-			break;
-		default:
-			break;
-		}
+		absoluteVelocity = CurrentVelocity;
 	}
 	else
 	{
 		absoluteAngle = beta + CurrentDistance / radius;
+		absoluteVelocity = -CurrentVelocity;
 
-		switch(plane)
-		{
-		case ROCKS_PLANE_XY:
-			pPosition[0] = center1 + radius * cos(absoluteAngle);
-			pPosition[1] = center2 + radius * sin(absoluteAngle);
-			pPosition[2] = 0;
-
-			pVelocity[0] = -CurrentVelocity * sin(absoluteAngle);
-			pVelocity[1] =  CurrentVelocity * cos(absoluteAngle);
-			pVelocity[2] =  0;
-			break;
-		case ROCKS_PLANE_YZ:
-			pPosition[1] = center1 + radius * cos(absoluteAngle);
-			pPosition[2] = center2 + radius * sin(absoluteAngle);
-			pPosition[0] = 0;
-
-			pVelocity[1] = -CurrentVelocity * sin(absoluteAngle);
-			pVelocity[2] =  CurrentVelocity * cos(absoluteAngle);
-			pVelocity[0] =  0;
-			break;
-		case ROCKS_PLANE_ZX:
-			pPosition[0] = center1 + radius * cos(absoluteAngle);
-			pPosition[2] = center2 + radius * sin(absoluteAngle);
-			pPosition[1] = 0;
-
-			pVelocity[0] = -CurrentVelocity * sin(absoluteAngle);
-			pVelocity[2] =  CurrentVelocity * cos(absoluteAngle);
-			pVelocity[1] =  0;
-			break;
-		default:
-			break;
-		}
 	}
 
+	switch(plane)
+	{
+	case ROCKS_PLANE_XY:
+		pPosition[0] = center1 + radius * cos(absoluteAngle);
+		pPosition[1] = center2 + radius * sin(absoluteAngle);
+
+		pVelocity[0] =  absoluteVelocity * sin(absoluteAngle);
+		pVelocity[1] = -absoluteVelocity * cos(absoluteAngle);
+		break;
+	case ROCKS_PLANE_YZ:
+		pPosition[1] = center1 + radius * cos(absoluteAngle);
+		pPosition[2] = center2 + radius * sin(absoluteAngle);
+
+		pVelocity[1] =  absoluteVelocity * sin(absoluteAngle);
+		pVelocity[2] = -absoluteVelocity * cos(absoluteAngle);
+		break;
+	case ROCKS_PLANE_ZX:
+		pPosition[0] = center1 + radius * cos(absoluteAngle);
+		pPosition[2] = center2 + radius * sin(absoluteAngle);
+
+		pVelocity[0] =  absoluteVelocity * sin(absoluteAngle);
+		pVelocity[2] = -absoluteVelocity * cos(absoluteAngle);
+		break;
+	default:
+		break;
+	}
 
 	if (pose.r.x)
 	{
-		Roll(pPosition, pose.r.x);
+		Roll(pPosition, startPos1, startPos2, pose.r.x);
 		Roll(pVelocity, pose.r.x);
 	}
 
 	if (pose.r.y)
 	{
-		Pitch(pPosition, pose.r.y);
+		Pitch(pPosition, startPos1, startPos2, pose.r.y);
 		Pitch(pVelocity, pose.r.y);
 	}
 
 	if (pose.r.z)
 	{
-		Yaw(pPosition, pose.r.z);
+		Yaw(pPosition, startPos1, startPos2, pose.r.z);
 		Yaw(pVelocity, pose.r.z);
 	}
 
@@ -119,7 +81,7 @@ void ConvertCriclePath(ROCKS_PLANE &plane, ROCKS_POSE &pose, double &startPos1, 
 	pPosition[2] += pose.t.z;
 }
 
-void ConvertCriclePath(double *pStartPos, double &totalAngle, double &CurrentDistance, double &CurrentVelocity, ROCKS_PLANE &plane, double &radius, double *pCenter, double *pPosition, double *pVelocity)
+void ConvertCriclePath(const double *const pStartPos, const double &totalAngle, const double &CurrentDistance, const double &CurrentVelocity, const ROCKS_PLANE &plane, const double &radius, const double *const pCenter, double *const pPosition, double *const pVelocity)
 {
 	double angle(0.0);
 	double beta(0.0);
@@ -127,87 +89,81 @@ void ConvertCriclePath(double *pStartPos, double &totalAngle, double &CurrentDis
 	{
 	case ROCKS_PLANE_XY:
 		CalcRotateAngle(beta, pCenter[0], pCenter[1], pStartPos[0], pStartPos[1]);
-		beta = -beta;
-
-		if (totalAngle > 0)
-			angle = beta - CurrentDistance / radius;
-		else
-			angle = beta + CurrentDistance / radius;
-
-		pPosition[0] = pCenter[0] + radius * cos(angle);
-		pPosition[1] = pCenter[1] + radius * sin(angle);
-		pPosition[2] = pStartPos[2];
 
 		if (totalAngle > 0)
 		{
+			angle = beta - CurrentDistance / radius;
+
 			pVelocity[0] =  CurrentVelocity * sin(angle);
 			pVelocity[1] = -CurrentVelocity * cos(angle);
 			pVelocity[2] =  0;
 		}
 		else
 		{
+			angle = beta + CurrentDistance / radius;
+
 			pVelocity[0] = -CurrentVelocity * sin(angle);
 			pVelocity[1] =  CurrentVelocity * cos(angle);
 			pVelocity[2] =  0;
 		}
+
+		pPosition[0] = pCenter[0] + radius * cos(angle);
+		pPosition[1] = pCenter[1] + radius * sin(angle);
+		pPosition[2] = pStartPos[2];
 		break;
 	case ROCKS_PLANE_YZ:
 		CalcRotateAngle(beta, pCenter[0], pCenter[1], pStartPos[1], pStartPos[2]);
-		beta = -beta;
-
-		if (totalAngle > 0)
-			angle = beta - CurrentDistance / radius;
-		else
-			angle = beta + CurrentDistance / radius;
-
-		pPosition[0] = pStartPos[0];
-		pPosition[1] = pCenter[0] + radius * cos(angle);
-		pPosition[2] = pCenter[1] + radius * sin(angle);
 
 		if (totalAngle > 0)
 		{
+			angle = beta - CurrentDistance / radius;
+
 			pVelocity[0] =  0;
 			pVelocity[1] =  CurrentVelocity * sin(angle);
 			pVelocity[2] = -CurrentVelocity * cos(angle);
 		}
 		else
 		{
+			angle = beta + CurrentDistance / radius;
+
 			pVelocity[0] =  0;
 			pVelocity[1] = -CurrentVelocity * sin(angle);
 			pVelocity[2] =  CurrentVelocity * cos(angle);
 		}
+
+		pPosition[0] = pStartPos[0];
+		pPosition[1] = pCenter[0] + radius * cos(angle);
+		pPosition[2] = pCenter[1] + radius * sin(angle);
 		break;
 	case ROCKS_PLANE_ZX:
 		CalcRotateAngle(beta, pCenter[0], pCenter[1], pStartPos[2], pStartPos[0]);
-		beta = -beta;
-
-		if (totalAngle > 0)
-			angle = beta - CurrentDistance / radius;
-		else
-			angle = beta + CurrentDistance / radius;
-
-		pPosition[0] = pCenter[1] + radius * sin(angle);
-		pPosition[1] = pStartPos[1];
-		pPosition[2] = pCenter[0] + radius * cos(angle);
 
 		if (totalAngle > 0)
 		{
+			angle = beta - CurrentDistance / radius;
+
 			pVelocity[0] = -CurrentVelocity * cos(angle);
 			pVelocity[1] =  0;
 			pVelocity[2] =  CurrentVelocity * sin(angle);
 		}
 		else
 		{
+			angle = beta + CurrentDistance / radius;
+
 			pVelocity[0] =  CurrentVelocity * cos(angle);
 			pVelocity[1] =  0;
 			pVelocity[2] = -CurrentVelocity * sin(angle);
 		}
+
+		pPosition[0] = pCenter[1] + radius * sin(angle);
+		pPosition[1] = pStartPos[1];
+		pPosition[2] = pCenter[0] + radius * cos(angle);
 		break;
 	}
 
 }
 
-void ConverLinePath(ROCKS_PLANE &plane, ROCKS_POSE &pose, double &startPos1, double &endPose1, double &startPos2, double &endPose2 , double &CurrentDistance, double &CurrentVelocity, double *pPosition, double *pVelocity)
+void ConverLinePath(const ROCKS_PLANE &plane, const ROCKS_POSE &pose, const double &startPos1, const double &endPose1, const double &startPos2, const double &endPose2 , const double &CurrentDistance, const double &CurrentVelocity, double *const pPosition, double *const pVelocity)
 {
 	double distance = sqrt((endPose1 - startPos1) * (endPose1 - startPos1) + (endPose2 - startPos2) * (endPose2 - startPos2));
 	double rate1 = (endPose1 - startPos1) / distance;
@@ -251,19 +207,19 @@ void ConverLinePath(ROCKS_PLANE &plane, ROCKS_POSE &pose, double &startPos1, dou
 
 	if (pose.r.x)
 	{
-		Roll(pPosition, pose.r.x);
+		Roll(pPosition, startPos1, startPos2, pose.r.x);
 		Roll(pVelocity, pose.r.x);
 	}
 
 	if (pose.r.y)
 	{
-		Pitch(pPosition, pose.r.y);
+		Pitch(pPosition, startPos1, startPos2, pose.r.y);
 		Pitch(pVelocity, pose.r.y);
 	}
 
 	if (pose.r.z)
 	{
-		Yaw(pPosition, pose.r.z);
+		Yaw(pPosition, startPos1, startPos2, pose.r.z);
 		Yaw(pVelocity, pose.r.z);
 	}
 
@@ -272,7 +228,7 @@ void ConverLinePath(ROCKS_PLANE &plane, ROCKS_POSE &pose, double &startPos1, dou
 	pPosition[2] += pose.t.z;
 }
 
-void ConverLinePath(double *pStartPos, double *pEndPos, double &totalDistance, double &CurrentDistance, double &CurrentVelocity, double *pPosition, double *pVelocity)
+void ConverLinePath(const double *const pStartPos, const double *const pEndPos, const double &totalDistance, const double &CurrentDistance, const double &CurrentVelocity, double *const pPosition, double *const pVelocity)
 {
 	double rate_x = (pEndPos[0] - pStartPos[0]) / totalDistance;
 	double rate_y = (pEndPos[1] - pStartPos[1]) / totalDistance;
@@ -287,7 +243,7 @@ void ConverLinePath(double *pStartPos, double *pEndPos, double &totalDistance, d
 	pVelocity[2] = CurrentVelocity * rate_z;
 }
 
-void ConvertPathToWorldCoordinate(ROCKS_MECH* pMech, uint32_t &index, double *pPosition, double *pVelocity)
+void ConvertPathToWorldCoordinate(const ROCKS_MECH* const pMech, uint32_t &index, double *const pPosition, double *const pVelocity)
 {
 	if (pMech->var.moveType == ROCKS_MOVE_TYPE_CIRCULAR)//check the path type
 	{
@@ -386,19 +342,19 @@ void ConvertPathToWorldCoordinate(ROCKS_MECH* pMech, uint32_t &index, double *pP
 
 	if (pMech->var.refFramePose2.r.x)
 	{
-		Roll(pPosition, pMech->var.refFramePose2.r.x);
+		Roll(pPosition, pMech->var.startPos, pMech->var.refFramePose2.r.x);
 		Roll(pVelocity, pMech->var.refFramePose2.r.x);
 	}
 
 	if (pMech->var.refFramePose2.r.y)
 	{
-		Pitch(pPosition, pMech->var.refFramePose2.r.y);
+		Pitch(pPosition, pMech->var.startPos, pMech->var.refFramePose2.r.y);
 		Pitch(pVelocity, pMech->var.refFramePose2.r.y);
 	}
 
 	if (pMech->var.refFramePose2.r.z)
 	{
-		Yaw(pPosition, pMech->var.refFramePose2.r.z);
+		Yaw(pPosition, pMech->var.startPos, pMech->var.refFramePose2.r.z);
 		Yaw(pVelocity, pMech->var.refFramePose2.r.z);
 	}
 
