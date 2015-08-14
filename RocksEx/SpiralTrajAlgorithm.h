@@ -18,6 +18,22 @@ void CalcArchimedeSpiralPars(const double *const startPos, const double *const e
 	a = radius[1] - b * theta2;
 }
 
+void CalcArchimedeSpiralPars(const double &startPos1, const double &startPos2, const double &endPos1, const double &endPos2, const double &center1, const double &center2, double &radius1, double &radius2, double &a, double &b)
+{
+	double offSet1(startPos1 - center1);
+	double offSet2(startPos2 - center2);
+	double offSet3(endPos1 - center1);
+	double offSet4(endPos2 - center2);
+	double theta1(atan2(offSet2, offSet1));
+	double theta2(atan2(offSet4, offSet3));
+	radius1 = sqrt(offSet2 * offSet2 + offSet1 * offSet1);
+	radius2 = sqrt(offSet4 * offSet4 + offSet3 * offSet3);
+
+	//r=a+b*theta
+	b = (radius1 - radius2) / (theta2 - theta1);
+	a = radius2 - b * theta2;
+}
+
 const double CalcArchimedeSpiralArcLen(const double *const radius, const double &a, const double &b)
 {
 	double fac1(sqrt(radius[0] * radius[0] + b * b));

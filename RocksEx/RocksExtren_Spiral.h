@@ -19,6 +19,18 @@ typedef struct rocks_traj_segment_spiral_pars
     ROCKS_POSE  originOffset;                   /**< Reference frame rotation offsets to be added before the arc */
 } ROCKS_TRAJ_SEGMENT_SPIRAL_PARS;
 
+typedef struct rocks_traj_segment_spiral_pars_ex
+{
+	double      endPos[2];                      /**< End position in 2 world coordinates (XY XZ or YZ) */
+	double      center[2];                      /**< Center of the arc (XY XZ or YZ) */
+	double      endAngleVelocity;               /**< End angle velocity */
+	double      maxAngleAcceleration;           /**< Path angle acceleration constraint */
+	double		maxRadialVelocity;				/**< Velocity of radial direction constraint */
+	double      maxRadialAcceleration;			/**< Acceleration of radial direction constraint */
+	ROCKS_PLANE plane;                          /**< Plane of the segment */
+	ROCKS_POSE  originOffset;                   /**< Reference frame rotation offsets to be added before the arc */
+} ROCKS_TRAJ_SEGMENT_SPIRAL_PARS_EX;
+
 NYCE_STATUS RocksTrajSegmentSpiral(ROCKS_MECH *pMech, const ROCKS_TRAJ_SEGMENT_SPIRAL_PARS *pTraj)
 {
 	double startPos[2];
@@ -124,4 +136,78 @@ NYCE_STATUS RocksTrajSegmentSpiral(ROCKS_MECH *pMech, const ROCKS_TRAJ_SEGMENT_S
 	pMech->var.lastSplineTime = 0;
 
 	return NYCE_OK;
+}
+
+NYCE_STATUS RocksTrajSegmentSpiral(ROCKS_MECH *pMech, const ROCKS_TRAJ_SEGMENT_SPIRAL_PARS_EX *pTraj)
+{
+	double startPos[2];
+	double moveSignal(0.0);
+	switch (pTraj->plane)
+	{
+	case ROCKS_PLANE_XY:
+		startPos[0] = pMech->var.lastSegmentEndPos[0];
+		startPos[1] = pMech->var.lastSegmentEndPos[1];
+		pMech->var.lastSegmentEndPos[0] = pTraj->endPos[0];
+		pMech->var.lastSegmentEndPos[1] = pTraj->endPos[1];
+		Roll(pMech->var.lastSegmentEndPos, pTraj->center[0], pTraj->center[1], pTraj->originOffset.r.x);
+		Pitch(pMech->var.lastSegmentEndPos, pTraj->center[0], pTraj->center[1], pTraj->originOffset.r.y);
+		Yaw(pMech->var.lastSegmentEndPos, pTraj->center[0], pTraj->center[1], pTraj->originOffset.r.z);
+		moveSignal = ROCKS_PLANE_XY * 256 + ROCKS_MOVE_TYPE_SPIRAL;
+		break;
+	case ROCKS_PLANE_YZ:
+		startPos[0] = pMech->var.lastSegmentEndPos[1];
+		startPos[1] = pMech->var.lastSegmentEndPos[2];
+		pMech->var.lastSegmentEndPos[1] = pTraj->endPos[0];
+		pMech->var.lastSegmentEndPos[2] = pTraj->endPos[1];
+		Roll(pMech->var.lastSegmentEndPos, pTraj->center[0], pTraj->center[1], pTraj->originOffset.r.x);
+		Pitch(pMech->var.lastSegmentEndPos, pTraj->center[0], pTraj->center[1], pTraj->originOffset.r.y);
+		Yaw(pMech->var.lastSegmentEndPos, pTraj->center[0], pTraj->center[1], pTraj->originOffset.r.z);
+		moveSignal = ROCKS_PLANE_YZ * 256 + ROCKS_MOVE_TYPE_SPIRAL;
+		break;
+	case ROCKS_PLANE_ZX:
+		startPos[0] = pMech->var.lastSegmentEndPos[0];
+		startPos[1] = pMech->var.lastSegmentEndPos[2];
+		pMech->var.lastSegmentEndPos[0] = pTraj->endPos[0];
+		pMech->var.lastSegmentEndPos[2] = pTraj->endPos[1];
+		Roll(pMech->var.lastSegmentEndPos, pTraj->center[0], pTraj->center[1], pTraj->originOffset.r.x);
+		Pitch(pMech->var.lastSegmentEndPos, pTraj->center[0], pTraj->center[1], pTraj->originOffset.r.y);
+		Yaw(pMech->var.lastSegmentEndPos, pTraj->center[0], pTraj->center[1], pTraj->originOffset.r.z);
+		moveSignal = ROCKS_PLANE_ZX * 256 + ROCKS_MOVE_TYPE_SPIRAL;
+		break;
+	default:
+		break;
+	}
+
+	//prepare
+	double offset1(startPos[0] - pTraj->center[0]);
+	double offset2(startPos[1] - pTraj->center[1]);
+	double offset3(pTraj->endPos[0] - pTraj->center[0]);
+	double offset4(pTraj->endPos[1] - pTraj->center[1]);
+
+	//calc angle pars
+	double totalAngle(atan2(offset4, offset3) - atan2(offset2, offset1));
+	double time(totalAngle * 2.0 / (pTraj->endAngleVelocity + pMech->var.lastSegmentEndVel));
+	double angleAcc((pTraj->endAngleVelocity - pMech->var.lastSegmentEndVel) / time);
+	if ( (angleAcc > 0 && angleAcc > pTraj->maxAngleAcceleration) || (angleAcc < 0 && - angleAcc > pTraj->maxAngleAcceleration))
+	{
+		pMech->var.mechStep = ROCKS_MECH_STEP_INITIAL;
+		return ROCKS_ERR_MAX_ANGLE_ACCELERATION_EXCEEDED;
+	}
+
+	//calc radial pars
+	double totalRadialDistance(sqrt(offset3 * offset3 + offset4 * offset4) - sqrt(offset1 * offset1 + offset2 * offset2));
+	double abMaxRadialVel(totalRadialDistance * 2.0 / time);
+	if ( (abMaxRadialVel > 0 && abMaxRadialVel > pTraj->maxRadialVelocity) || (abMaxRadialVel < 0 && - abMaxRadialVel > pTraj->maxRadialVelocity))
+	{
+		pMech->var.mechStep = ROCKS_MECH_STEP_INITIAL;
+		return ROCKS_ERR_MAX_RADIAL_VELOCITY_EXCEEDED;
+	}
+	double abRadialAcc(abMaxRadialVel * 2.0 / time);
+	if ( (abRadialAcc > 0 && abRadialAcc > pTraj->maxRadialAcceleration) || (abRadialAcc < 0 && - abRadialAcc > pTraj->maxRadialAcceleration))
+	{
+		pMech->var.mechStep = ROCKS_MECH_STEP_INITIAL;
+		return ROCKS_ERR_MAX_RADIAL_ACCELERATION_EXCEEDED;
+	}
+
+
 }

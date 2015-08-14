@@ -3,6 +3,7 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include "SpaceAlgorithm.h"
+#include "SpiralTrajAlgorithm.h"
 
 #include <rocksapi.h>
 
@@ -165,22 +166,10 @@ void ConvertCriclePath(const double *const pStartPos, const double &totalAngle, 
 
 void ConverSpiralPath(const ROCKS_PLANE &plane, const ROCKS_POSE &pose, const double &startPos1, const double &startPos2, const double &endPos1, const double &endPos2, const double &center1, const double &center2, const double &CurrentDistance, const double &CurrentVelocity, double *const pPosition, double *const pVelocity)
 {
-	double radius = sqrt((center1 - startPos1) * (center1 - startPos1) + (center2 - startPos2) * (center2 - startPos2));
-	double beta(0.0);
-	CalcRotateAngle(beta, center1, center2, startPos1, startPos2);
+	double stratRadius(0.0), endRadius(0.0), a(0.0), b(0.0);
+	CalcArchimedeSpiralPars(startPos1, startPos2, endPos1, endPos2, center1, center2, stratRadius, endRadius, a, b);
 
-	double absoluteAngle(0.0), absoluteVelocity(0.0);
-	if (angle>0)
-	{
-		absoluteAngle = beta - CurrentDistance / radius;
-		absoluteVelocity = CurrentVelocity;
-	}
-	else
-	{
-		absoluteAngle = beta + CurrentDistance / radius;
-		absoluteVelocity = -CurrentVelocity;
-	}
-
+	double absoluteAngle(0.0), radius(0.0), absoluteVelocity(0.0);
 	switch(plane)
 	{
 	case ROCKS_PLANE_XY:

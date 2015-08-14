@@ -504,6 +504,7 @@ NYCE_STATUS RocksSpiralDoorDelta()
 			kinPars.pJointPositionBuffer[ ax ] = NULL;
 			kinPars.pJointVelocityBuffer[ ax ] = NULL;
 		}
+
 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinInverseDelta( &m_mech, &kinPars );
 
 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksStream( &m_mech );	
