@@ -94,6 +94,9 @@ NYCE_STATUS RocksKinDeltaPosition(ROCKS_MECH* pMech, double pPos[])
 
 NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pKin)
 {
+	if (pMech->var.mechStep != ROCKS_MECH_STEP_VALID_PATH)
+		return ROCKS_ERR_NO_VALID_PATH;
+
 	if (delta_mech_pars.e <= 0 || delta_mech_pars.f <= 0 || delta_mech_pars.re <= 0 || delta_mech_pars.rf <= 0 )
 		return ROCKS_ERR_DELTA_PARS_ERROR;
 
