@@ -2,12 +2,8 @@
 
 #include <rocksapi.h>
 
-double *pPosSplineBuffer_x;
-double *pPosSplineBuffer_y;
-double *pPosSplineBuffer_z;
-double *pVelSplineBuffer_x;
-double *pVelSplineBuffer_y;
-double *pVelSplineBuffer_z;
+double (*pPosSplineBuffer)[ROCKS_MECH_MAX_DOF];
+double (*pVelSplineBuffer)[ROCKS_MECH_MAX_DOF];
 uint32_t spiralBufferSize = 0;
 BOOL bSpiralBufferAlloced = FALSE;
 
@@ -17,30 +13,14 @@ void SpiralBufferManage(ROCKS_MECH *pMech, const uint32_t& bufferEnd)
 	{
 		spiralBufferSize = 0;
 
-		uint32_t mallocSize(2777 * sizeof(double));
-
 		if (bSpiralBufferAlloced)//如果程序首次调用spiral轨迹规划，是不用销毁缓冲区的
 		{
-			free(pPosSplineBuffer_x);
-			free(pPosSplineBuffer_y);
-			free(pPosSplineBuffer_z);
-			free(pVelSplineBuffer_x);
-			free(pVelSplineBuffer_y);
-			free(pVelSplineBuffer_z);
+			delete []pPosSplineBuffer;
+			delete []pVelSplineBuffer;
 		}
 
-		pPosSplineBuffer_x = (double *)malloc(mallocSize);
-		pPosSplineBuffer_y = (double *)malloc(mallocSize);
-		pPosSplineBuffer_z = (double *)malloc(mallocSize);
-		pVelSplineBuffer_x = (double *)malloc(mallocSize);
-		pVelSplineBuffer_y = (double *)malloc(mallocSize);
-		pVelSplineBuffer_z = (double *)malloc(mallocSize);
-		ZeroMemory(pPosSplineBuffer_x, mallocSize);
-		ZeroMemory(pPosSplineBuffer_y, mallocSize);
-		ZeroMemory(pPosSplineBuffer_z, mallocSize);
-		ZeroMemory(pVelSplineBuffer_x, mallocSize);
-		ZeroMemory(pVelSplineBuffer_y, mallocSize);
-		ZeroMemory(pVelSplineBuffer_z, mallocSize);
+		pPosSplineBuffer = new double[pMech->var.maxNrOfSplines][ROCKS_MECH_MAX_DOF]();
+		pVelSplineBuffer = new double[pMech->var.maxNrOfSplines][ROCKS_MECH_MAX_DOF]();
 
 		bSpiralBufferAlloced = TRUE;
 	}
@@ -72,42 +52,23 @@ void SpiralBufferManage(ROCKS_MECH *pMech, const uint32_t& bufferEnd)
 	if(bufferEnd > spiralBufferSize)
 	{
 		uint32_t copySize(spiralBufferSize * sizeof(double));
-		spiralBufferSize = bufferEnd + 512;
-		uint32_t mallocSize(spiralBufferSize * sizeof(double));
+		spiralBufferSize = pMech->var.maxNrOfSplines;
 
-		double *pPosBuffer_x = (double *)malloc(mallocSize);
-		double *pPosBuffer_y = (double *)malloc(mallocSize);
-		double *pPosBuffer_z = (double *)malloc(mallocSize);
-		double *pVelBuffer_x = (double *)malloc(mallocSize);
-		double *pVelBuffer_y = (double *)malloc(mallocSize);
-		double *pVelBuffer_z = (double *)malloc(mallocSize);
-		ZeroMemory(pPosBuffer_x, mallocSize);
-		ZeroMemory(pPosBuffer_y, mallocSize);
-		ZeroMemory(pPosBuffer_z, mallocSize);
-		ZeroMemory(pVelBuffer_x, mallocSize);
-		ZeroMemory(pVelBuffer_y, mallocSize);
-		ZeroMemory(pVelBuffer_z, mallocSize);
+		double (*pPosBuffer)[ROCKS_MECH_MAX_DOF] = new double[pMech->var.maxNrOfSplines][ROCKS_MECH_MAX_DOF]();
+		double (*pVelBuffer)[ROCKS_MECH_MAX_DOF] = new double[pMech->var.maxNrOfSplines][ROCKS_MECH_MAX_DOF]();
 
-		memcpy(pPosBuffer_x, pPosSplineBuffer_x, copySize);
-		memcpy(pPosBuffer_y, pPosSplineBuffer_y, copySize);
-		memcpy(pPosBuffer_z, pPosSplineBuffer_z, copySize);
-		memcpy(pVelBuffer_x, pVelSplineBuffer_x, copySize);
-		memcpy(pVelBuffer_y, pVelSplineBuffer_y, copySize);
-		memcpy(pVelBuffer_z, pVelSplineBuffer_z, copySize);
+		memcpy(pPosBuffer[0], pPosSplineBuffer[0], copySize);
+		memcpy(pPosBuffer[1], pPosSplineBuffer[1], copySize);
+		memcpy(pPosBuffer[2], pPosSplineBuffer[2], copySize);
+		memcpy(pVelBuffer[0], pVelSplineBuffer[0], copySize);
+		memcpy(pVelBuffer[1], pVelSplineBuffer[1], copySize);
+		memcpy(pVelBuffer[2], pVelSplineBuffer[2], copySize);
 
-		free(pPosSplineBuffer_x);
-		free(pPosSplineBuffer_y);
-		free(pPosSplineBuffer_z);
-		free(pVelSplineBuffer_x);
-		free(pVelSplineBuffer_y);
-		free(pVelSplineBuffer_z);
+		delete []pPosSplineBuffer;
+		delete []pVelSplineBuffer;
 
-		pPosSplineBuffer_x = pPosBuffer_x;
-		pPosSplineBuffer_y = pPosBuffer_y;
-		pPosSplineBuffer_z = pPosBuffer_z;
-		pVelSplineBuffer_x = pVelBuffer_x;
-		pVelSplineBuffer_y = pVelBuffer_y;
-		pVelSplineBuffer_z = pVelBuffer_z;
+		pPosSplineBuffer = pPosBuffer;
+		pVelSplineBuffer = pVelBuffer;
 	}
 
 	bSpiralBufferAlloced = TRUE;

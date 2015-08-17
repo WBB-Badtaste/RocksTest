@@ -331,6 +331,7 @@ NYCE_STATUS RocksCricleCartesian(const CARTESIAN_COORD &centerOffset, const doub
 
 const double DOOR_SPLINETIME = 0.0002;
 const double DOOR_SPEED = 100;
+const double DOOR_ACC = DOOR_SPEED * 100;
 const double DOOR_HEIGHT = 20;
 const double DOOR_WIDTH = 20;
 const double DOOR_FILLET = 40;
@@ -435,9 +436,16 @@ NYCE_STATUS RocksDoorDelta()
 	return nyceStatus;
 }
 
-ROCKS_TRAJ_SEGMENT_SPIRAL_PARS segSpiralPars1, segSpiralPars2, segSpiralPars3, segSpiralPars4;
+const double DOOR_EX_SPLINETIME = 0.0002;
+const double DOOR_EX_SPEED = 100;
+const double DOOR_EX_ACC = DOOR_SPEED * 100;
+const double SPIRAL_MAX_RADIAL_SPEED = 100;
+const double SPIRAL_MAX_RADIAL_ACC = SPIRAL_MAX_RADIAL_SPEED * 100;
 
-NYCE_STATUS RocksSpiralDoorDelta()
+
+ROCKS_TRAJ_SEGMENT_SPIRAL_PARS_EX segSpiralPars1, segSpiralPars2, segSpiralPars3, segSpiralPars4;
+
+NYCE_STATUS RocksSpiralExDoorDelta()
 {
 	NYCE_STATUS nyceStatus(NYCE_OK);
 	ROCKS_KIN_INV_PARS kinPars;
@@ -445,7 +453,8 @@ NYCE_STATUS RocksSpiralDoorDelta()
 
 	double center[2] = {(OPT_DOOR_POINT_2[0] + OPT_DOOR_POINT_3[0]) / 2.0, OPT_DOOR_POINT_1[2]};
 	double radius[2] = {sqrt((OPT_DOOR_POINT_2[0] - center[0]) * (OPT_DOOR_POINT_2[0] - center[0]) + (OPT_DOOR_POINT_2[2] - center[1]) * (OPT_DOOR_POINT_2[2] - center[1])), sqrt((OPT_DOOR_POINT_3[0] - center[0]) * (OPT_DOOR_POINT_3[0] - center[0]) + (OPT_DOOR_POINT_3[2] - center[1]) * (OPT_DOOR_POINT_3[2] - center[1]))};
-	double intersection[2] = {center[0],center[1] + max(radius[0], radius[1])};
+	double angleSpeed(DOOR_EX_SPEED / radius[1]);
+	double angleMaxAcc(angleSpeed * 100);
 
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinDeltaPosition(&m_mech, segStartPars.startPos);
 
@@ -457,43 +466,106 @@ NYCE_STATUS RocksSpiralDoorDelta()
 	segSpiralPars1.plane = ROCKS_PLANE_ZX;
 	segSpiralPars1.center[0] = center[0];
 	segSpiralPars1.center[1] = center[1];
-	segSpiralPars1.endPos[0] = intersection[0];
-	segSpiralPars1.endPos[1] = intersection[1];
-	segSpiralPars1.endVelocity = DOOR_SPEED;
-	segSpiralPars1.maxAcceleration = DOOR_SPEED * 100;
+	segSpiralPars1.endPos[0] = OPT_DOOR_POINT_2[0];
+	segSpiralPars1.endPos[1] = OPT_DOOR_POINT_2[2];
+	segSpiralPars1.endAngleVelocity = angleSpeed;
+	segSpiralPars1.maxAngleAcceleration = angleMaxAcc;
+	segSpiralPars1.maxRadialVelocity = SPIRAL_MAX_RADIAL_SPEED;
+	segSpiralPars1.maxRadialAcceleration = SPIRAL_MAX_RADIAL_ACC;
+	segSpiralPars1.originOffset.r.x = 0;
+	segSpiralPars1.originOffset.r.y = 0;
+	segSpiralPars1.originOffset.r.z = 0;
+	segSpiralPars1.originOffset.t.x = 0;
+	segSpiralPars1.originOffset.t.y = 0;
+	segSpiralPars1.originOffset.t.z = 0;
+	
+	segArcPars1.plane = ROCKS_PLANE_ZX;
+	segArcPars1.center[0] = center[0];
+	segArcPars1.center[1] = center[0];
+	segArcPars1.endPos[0] = OPT_DOOR_POINT_3[0];
+	segArcPars1.endPos[1] = OPT_DOOR_POINT_3[2];
+	segArcPars1.endVelocity = DOOR_EX_SPEED;
+	segArcPars1.maxAcceleration = DOOR_EX_ACC;
+	segArcPars1.positiveAngle = TRUE;
+	segArcPars1.originOffset.r.x = 0;
+	segArcPars1.originOffset.r.y = 0;
+	segArcPars1.originOffset.r.z = 0;
+	segArcPars1.originOffset.t.x = 0;
+	segArcPars1.originOffset.t.y = 0;
+	segArcPars1.originOffset.t.z = 0;
 
 	segSpiralPars2.plane = ROCKS_PLANE_ZX;
 	segSpiralPars2.center[0] = center[0];
 	segSpiralPars2.center[1] = center[1];
 	segSpiralPars2.endPos[0] = OPT_DOOR_POINT_4[0];
 	segSpiralPars2.endPos[1] = OPT_DOOR_POINT_4[2];
-	segSpiralPars2.endVelocity = 0;
-	segSpiralPars2.maxAcceleration = DOOR_SPEED * 100;
+	segSpiralPars2.endAngleVelocity = 0;
+	segSpiralPars2.maxAngleAcceleration = angleMaxAcc;
+	segSpiralPars2.maxRadialVelocity = SPIRAL_MAX_RADIAL_SPEED;
+	segSpiralPars2.maxRadialAcceleration = SPIRAL_MAX_RADIAL_ACC;
+	segSpiralPars2.originOffset.r.x = 0;
+	segSpiralPars2.originOffset.r.y = 0;
+	segSpiralPars2.originOffset.r.z = 0;
+	segSpiralPars2.originOffset.t.x = 0;
+	segSpiralPars2.originOffset.t.y = 0;
+	segSpiralPars2.originOffset.t.z = 0;
 
 	segSpiralPars3.plane = ROCKS_PLANE_ZX;
 	segSpiralPars3.center[0] = center[0];
 	segSpiralPars3.center[1] = center[1];
-	segSpiralPars3.endPos[0] = intersection[0];
-	segSpiralPars3.endPos[1] = intersection[1];
-	segSpiralPars3.endVelocity = DOOR_SPEED;
-	segSpiralPars3.maxAcceleration = DOOR_SPEED * 100;
+	segSpiralPars3.endPos[0] = OPT_DOOR_POINT_3[0];
+	segSpiralPars3.endPos[1] = OPT_DOOR_POINT_3[2];
+	segSpiralPars3.endAngleVelocity = angleSpeed;
+	segSpiralPars3.maxAngleAcceleration = angleMaxAcc;
+	segSpiralPars3.maxRadialVelocity = SPIRAL_MAX_RADIAL_SPEED;
+	segSpiralPars3.maxRadialAcceleration = SPIRAL_MAX_RADIAL_ACC;
+	segSpiralPars3.originOffset.r.x = 0;
+	segSpiralPars3.originOffset.r.y = 0;
+	segSpiralPars3.originOffset.r.z = 0;
+	segSpiralPars3.originOffset.t.x = 0;
+	segSpiralPars3.originOffset.t.y = 0;
+	segSpiralPars3.originOffset.t.z = 0;
+
+	segArcPars2.plane = ROCKS_PLANE_ZX;
+	segArcPars2.center[0] = center[0];
+	segArcPars2.center[1] = center[0];
+	segArcPars2.endPos[0] = OPT_DOOR_POINT_2[0];
+	segArcPars2.endPos[1] = OPT_DOOR_POINT_2[2];
+	segArcPars2.endVelocity = DOOR_EX_SPEED;
+	segArcPars2.maxAcceleration = DOOR_EX_ACC;
+	segArcPars2.positiveAngle = TRUE;
+	segArcPars2.originOffset.r.x = 0;
+	segArcPars2.originOffset.r.y = 0;
+	segArcPars2.originOffset.r.z = 0;
+	segArcPars2.originOffset.t.x = 0;
+	segArcPars2.originOffset.t.y = 0;
+	segArcPars2.originOffset.t.z = 0;
 
 	segSpiralPars4.plane = ROCKS_PLANE_ZX;
 	segSpiralPars4.center[0] = center[0];
 	segSpiralPars4.center[1] = center[1];
 	segSpiralPars4.endPos[0] = OPT_DOOR_POINT_1[0];
 	segSpiralPars4.endPos[1] = OPT_DOOR_POINT_1[2];
-	segSpiralPars4.endVelocity = 0;
-	segSpiralPars4.maxAcceleration = DOOR_SPEED * 100;
+	segSpiralPars4.endAngleVelocity = 0;
+	segSpiralPars4.maxAngleAcceleration = angleMaxAcc;
+	segSpiralPars4.maxRadialVelocity = SPIRAL_MAX_RADIAL_SPEED;
+	segSpiralPars4.maxRadialAcceleration = SPIRAL_MAX_RADIAL_ACC;
+	segSpiralPars4.originOffset.r.x = 0;
+	segSpiralPars4.originOffset.r.y = 0;
+	segSpiralPars4.originOffset.r.z = 0;
+	segSpiralPars4.originOffset.t.x = 0;
+	segSpiralPars4.originOffset.t.y = 0;
+	segSpiralPars4.originOffset.t.z = 0;
 
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentStart(&m_mech,&segStartPars);
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentSpiral(&m_mech,&segSpiralPars1);
+	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentArc(&m_mech,&segArcPars1);
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentSpiral(&m_mech,&segSpiralPars2);
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentSpiral(&m_mech,&segSpiralPars3);
+	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentArc(&m_mech,&segArcPars2);
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentSpiral(&m_mech,&segSpiralPars4);
 
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajGetPath( &m_mech, &rocksTrajPath );
-
 
 	while(nyceStatus == NYCE_OK)
 	{

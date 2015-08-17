@@ -4,6 +4,7 @@
 #include <math.h>
 #include "SpaceAlgorithm.h"
 #include "SpiralTrajAlgorithm.h"
+#include "RocksSpiralBufferManager.h"
 
 #include <rocksapi.h>
 
@@ -337,14 +338,17 @@ void ConvertPathToWorldCoordinate(const ROCKS_MECH* const pMech, uint32_t &index
 			}
 			switch ((int)(pMech->var.pPositionSplineBuffer[index + 3]) % 256)
 			{
-			case ROCKS_MOVE_TYPE_LINEAR://LINE
+			case ROCKS_MOVE_TYPE_LINEAR:
 				mix_moveType = ROCKS_MOVE_TYPE_LINEAR;
 				break;
-			case ROCKS_MOVE_TYPE_CIRCULAR://CRICLE
+			case ROCKS_MOVE_TYPE_CIRCULAR:
 				mix_moveType = ROCKS_MOVE_TYPE_CIRCULAR;
 				break;
 			case ROCKS_MOVE_TYPE_SPIRAL:
 				mix_moveType = ROCKS_MOVE_TYPE_SPIRAL;
+				break;
+			case ROCKS_MOVE_TYPE_SPIRAL_EX:
+				mix_moveType = ROCKS_MOVE_TYPE_SPIRAL_EX;
 				break;
 			default:
 				break;
@@ -388,6 +392,19 @@ void ConvertPathToWorldCoordinate(const ROCKS_MECH* const pMech, uint32_t &index
 			ConvertCriclePath(mix_plane, mix_pose, mix_startPos1, mix_startPos2, mix_center1, mix_center2, mix_angle, pMech->var.pPositionSplineBuffer[index], pMech->var.pVelocitySplineBuffer[index], pPosition, pVelocity);
 			break;
 		case ROCKS_MOVE_TYPE_SPIRAL:
+			//ConverSpiralPath();
+			break;
+		case ROCKS_MOVE_TYPE_SPIRAL_EX:
+			pPosition[0] = pPosSplineBuffer[index][0];
+			pPosition[1] = pPosSplineBuffer[index][1];
+			pPosition[2] = pPosSplineBuffer[index][2];
+
+			pVelocity[0] = pVelSplineBuffer[index][0];
+			pVelocity[1] = pVelSplineBuffer[index][1];
+			pVelocity[2] = pVelSplineBuffer[index][2];
+
+			return;
+
 			break;
 		default:
 			break;

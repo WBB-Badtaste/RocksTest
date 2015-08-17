@@ -244,31 +244,31 @@ NYCE_STATUS RocksTrajSegmentSpiral(ROCKS_MECH *pMech, const ROCKS_TRAJ_SEGMENT_S
 			switch (pTraj->plane)
 			{
 			case ROCKS_PLANE_XY:
-				pPosSplineBuffer_x[pMech->var.usedNrOfSplines] = pTraj->center[0] + endRadius * cos(endtAngle);
-				pPosSplineBuffer_y[pMech->var.usedNrOfSplines] = pTraj->center[1] + endRadius * sin(endtAngle);
-				pPosSplineBuffer_z[pMech->var.usedNrOfSplines] = pMech->var.lastSegmentEndPos[2];
-
-				pVelSplineBuffer_x[pMech->var.usedNrOfSplines] = endVel * sin(endtAngle);
-				pVelSplineBuffer_y[pMech->var.usedNrOfSplines] = -endVel * cos(endtAngle);
-				pVelSplineBuffer_z[pMech->var.usedNrOfSplines] = 0;
+				pPosSplineBuffer[pMech->var.usedNrOfSplines][0] = pTraj->center[0] + endRadius * cos(endtAngle);
+				pPosSplineBuffer[pMech->var.usedNrOfSplines][1] = pTraj->center[1] + endRadius * sin(endtAngle);
+				pPosSplineBuffer[pMech->var.usedNrOfSplines][2] = pMech->var.lastSegmentEndPos[2];
+															
+				pVelSplineBuffer[pMech->var.usedNrOfSplines][0] = endVel * sin(endtAngle);
+				pVelSplineBuffer[pMech->var.usedNrOfSplines][1] = -endVel * cos(endtAngle);
+				pVelSplineBuffer[pMech->var.usedNrOfSplines][2] = 0;
 				break;
 			case ROCKS_PLANE_YZ:
-				pPosSplineBuffer_x[pMech->var.usedNrOfSplines] = pMech->var.lastSegmentEndPos[0];
-				pPosSplineBuffer_y[pMech->var.usedNrOfSplines] = pTraj->center[0] + endRadius * cos(endtAngle);
-				pPosSplineBuffer_z[pMech->var.usedNrOfSplines] = pTraj->center[1] + endRadius * sin(endtAngle);
-
-				pVelSplineBuffer_x[pMech->var.usedNrOfSplines] = 0;
-				pVelSplineBuffer_y[pMech->var.usedNrOfSplines] = endVel * sin(endtAngle);
-				pVelSplineBuffer_z[pMech->var.usedNrOfSplines] = -endVel * cos(endtAngle);
+				pPosSplineBuffer[pMech->var.usedNrOfSplines][0] = pMech->var.lastSegmentEndPos[0];
+				pPosSplineBuffer[pMech->var.usedNrOfSplines][1] = pTraj->center[0] + endRadius * cos(endtAngle);
+				pPosSplineBuffer[pMech->var.usedNrOfSplines][2] = pTraj->center[1] + endRadius * sin(endtAngle);
+															
+				pVelSplineBuffer[pMech->var.usedNrOfSplines][0] = 0;
+				pVelSplineBuffer[pMech->var.usedNrOfSplines][1] = endVel * sin(endtAngle);
+				pVelSplineBuffer[pMech->var.usedNrOfSplines][2] = -endVel * cos(endtAngle);
 				break;
 			case ROCKS_PLANE_ZX:
-				pPosSplineBuffer_x[pMech->var.usedNrOfSplines] = pTraj->center[0] + endRadius * cos(endtAngle);
-				pPosSplineBuffer_y[pMech->var.usedNrOfSplines] = pMech->var.lastSegmentEndPos[1];
-				pPosSplineBuffer_z[pMech->var.usedNrOfSplines] = pTraj->center[1] + endRadius * sin(endtAngle);
-
-				pVelSplineBuffer_x[pMech->var.usedNrOfSplines] = endVel * sin(endtAngle);
-				pVelSplineBuffer_y[pMech->var.usedNrOfSplines] = 0;
-				pVelSplineBuffer_z[pMech->var.usedNrOfSplines] = -endVel * cos(endtAngle);
+				pPosSplineBuffer[pMech->var.usedNrOfSplines][0] = pTraj->center[0] + endRadius * cos(endtAngle);
+				pPosSplineBuffer[pMech->var.usedNrOfSplines][1] = pMech->var.lastSegmentEndPos[1];
+				pPosSplineBuffer[pMech->var.usedNrOfSplines][2] = pTraj->center[1] + endRadius * sin(endtAngle);
+			
+				pVelSplineBuffer[pMech->var.usedNrOfSplines][0] = endVel * sin(endtAngle);
+				pVelSplineBuffer[pMech->var.usedNrOfSplines][1] = 0;
+				pVelSplineBuffer[pMech->var.usedNrOfSplines][2] = -endVel * cos(endtAngle);
 				break;
 			default:
 				break;
@@ -301,31 +301,31 @@ NYCE_STATUS RocksTrajSegmentSpiral(ROCKS_MECH *pMech, const ROCKS_TRAJ_SEGMENT_S
 			switch (pTraj->plane)
 			{
 			case ROCKS_PLANE_XY:
-				pPosSplineBuffer_x[pMech->var.usedNrOfSplines] = pTraj->center[0] + currentRadius * cos(currentAngle);
-				pPosSplineBuffer_y[pMech->var.usedNrOfSplines] = pTraj->center[1] + currentRadius * sin(currentAngle);
-				pPosSplineBuffer_z[pMech->var.usedNrOfSplines] = pMech->var.lastSegmentEndPos[2];
-
-				pVelSplineBuffer_x[pMech->var.usedNrOfSplines] = currentAngleVel * sin(currentAngle) + currentRadialVel * cos(currentAngle);
-				pVelSplineBuffer_y[pMech->var.usedNrOfSplines] = -currentAngleVel * cos(currentAngle) + currentRadialVel * sin(currentAngle);
-				pVelSplineBuffer_z[pMech->var.usedNrOfSplines] = 0;
-				break;
-			case ROCKS_PLANE_YZ:
-				pPosSplineBuffer_x[pMech->var.usedNrOfSplines] = pMech->var.lastSegmentEndPos[0];
-				pPosSplineBuffer_y[pMech->var.usedNrOfSplines] = pTraj->center[0] + currentRadius * cos(currentAngle);
-				pPosSplineBuffer_z[pMech->var.usedNrOfSplines] = pTraj->center[1] + currentRadius * sin(currentAngle);
-
-				pVelSplineBuffer_x[pMech->var.usedNrOfSplines] = 0;
-				pVelSplineBuffer_y[pMech->var.usedNrOfSplines] = currentAngleVel * sin(currentAngle) + currentRadialVel * cos(currentAngle);
-				pVelSplineBuffer_z[pMech->var.usedNrOfSplines] = -currentAngleVel * cos(currentAngle) + currentRadialVel * sin(currentAngle);
-				break;
-			case ROCKS_PLANE_ZX:
-				pPosSplineBuffer_x[pMech->var.usedNrOfSplines] = pTraj->center[0] + currentRadius * cos(currentAngle);
-				pPosSplineBuffer_y[pMech->var.usedNrOfSplines] = pMech->var.lastSegmentEndPos[1];
-				pPosSplineBuffer_z[pMech->var.usedNrOfSplines] = pTraj->center[1] + currentRadius * sin(currentAngle);
-
-				pVelSplineBuffer_x[pMech->var.usedNrOfSplines] = currentAngleVel * sin(currentAngle) + currentRadialVel * cos(currentAngle);
-				pVelSplineBuffer_y[pMech->var.usedNrOfSplines] = 0;
-				pVelSplineBuffer_z[pMech->var.usedNrOfSplines] = -currentAngleVel * cos(currentAngle) + currentRadialVel * sin(currentAngle);
+				pPosSplineBuffer[pMech->var.usedNrOfSplines][0] = pTraj->center[0] + currentRadius * cos(currentAngle);
+				pPosSplineBuffer[pMech->var.usedNrOfSplines][1] = pTraj->center[1] + currentRadius * sin(currentAngle);
+				pPosSplineBuffer[pMech->var.usedNrOfSplines][2] = pMech->var.lastSegmentEndPos[2];
+															
+				pVelSplineBuffer[pMech->var.usedNrOfSplines][0] = currentAngleVel * sin(currentAngle) + currentRadialVel * cos(currentAngle);
+				pVelSplineBuffer[pMech->var.usedNrOfSplines][1] = -currentAngleVel * cos(currentAngle) + currentRadialVel * sin(currentAngle);
+				pVelSplineBuffer[pMech->var.usedNrOfSplines][2] = 0;
+				break;										
+			case ROCKS_PLANE_YZ:							
+				pPosSplineBuffer[pMech->var.usedNrOfSplines][0] = pMech->var.lastSegmentEndPos[0];
+				pPosSplineBuffer[pMech->var.usedNrOfSplines][1] = pTraj->center[0] + currentRadius * cos(currentAngle);
+				pPosSplineBuffer[pMech->var.usedNrOfSplines][2] = pTraj->center[1] + currentRadius * sin(currentAngle);
+															
+				pVelSplineBuffer[pMech->var.usedNrOfSplines][0] = 0;
+				pVelSplineBuffer[pMech->var.usedNrOfSplines][1] = currentAngleVel * sin(currentAngle) + currentRadialVel * cos(currentAngle);
+				pVelSplineBuffer[pMech->var.usedNrOfSplines][2] = -currentAngleVel * cos(currentAngle) + currentRadialVel * sin(currentAngle);
+				break;										
+			case ROCKS_PLANE_ZX:							
+				pPosSplineBuffer[pMech->var.usedNrOfSplines][0] = pTraj->center[0] + currentRadius * cos(currentAngle);
+				pPosSplineBuffer[pMech->var.usedNrOfSplines][1] = pMech->var.lastSegmentEndPos[1];
+				pPosSplineBuffer[pMech->var.usedNrOfSplines][2] = pTraj->center[1] + currentRadius * sin(currentAngle);
+															
+				pVelSplineBuffer[pMech->var.usedNrOfSplines][0] = currentAngleVel * sin(currentAngle) + currentRadialVel * cos(currentAngle);
+				pVelSplineBuffer[pMech->var.usedNrOfSplines][1] = 0;
+				pVelSplineBuffer[pMech->var.usedNrOfSplines][2] = -currentAngleVel * cos(currentAngle) + currentRadialVel * sin(currentAngle);
 				break;
 			default:
 				break;
@@ -334,25 +334,25 @@ NYCE_STATUS RocksTrajSegmentSpiral(ROCKS_MECH *pMech, const ROCKS_TRAJ_SEGMENT_S
 		
 		if (pMech->var.refFramePose2.r.x)
 		{
-			Roll(pPosition, pMech->var.startPos, pMech->var.refFramePose2.r.x);
-			Roll(pVelocity, pMech->var.refFramePose2.r.x);
+			Roll(pPosSplineBuffer[pMech->var.usedNrOfSplines], pMech->var.startPos, pMech->var.refFramePose2.r.x);
+			Roll(pVelSplineBuffer[pMech->var.usedNrOfSplines], pMech->var.refFramePose2.r.x);
 		}
 
 		if (pMech->var.refFramePose2.r.y)
 		{
-			Pitch(pPosition, pMech->var.startPos, pMech->var.refFramePose2.r.y);
-			Pitch(pVelocity, pMech->var.refFramePose2.r.y);
+			Pitch(pPosSplineBuffer[pMech->var.usedNrOfSplines], pMech->var.startPos, pMech->var.refFramePose2.r.y);
+			Pitch(pVelSplineBuffer[pMech->var.usedNrOfSplines], pMech->var.refFramePose2.r.y);
 		}
 
 		if (pMech->var.refFramePose2.r.z)
 		{
-			Yaw(pPosition, pMech->var.startPos, pMech->var.refFramePose2.r.z);
-			Yaw(pVelocity, pMech->var.refFramePose2.r.z);
+			Yaw(pPosSplineBuffer[pMech->var.usedNrOfSplines], pMech->var.startPos, pMech->var.refFramePose2.r.z);
+			Yaw(pVelSplineBuffer[pMech->var.usedNrOfSplines], pMech->var.refFramePose2.r.z);
 		}
 
-		pPosSplineBuffer_x[pMech->var.usedNrOfSplines] += pMech->var.refFramePose2.t.x;
-		pPosSplineBuffer_y[pMech->var.usedNrOfSplines] += pMech->var.refFramePose2.t.y;
-		pPosSplineBuffer_z[pMech->var.usedNrOfSplines] += pMech->var.refFramePose2.t.z;
+		pPosSplineBuffer[pMech->var.usedNrOfSplines][0] += pMech->var.refFramePose2.t.x;
+		pPosSplineBuffer[pMech->var.usedNrOfSplines][1] += pMech->var.refFramePose2.t.y;
+		pPosSplineBuffer[pMech->var.usedNrOfSplines][2] += pMech->var.refFramePose2.t.z;
 	}
 
 	//调整mech结构体
