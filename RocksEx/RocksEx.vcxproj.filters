@@ -60,6 +60,9 @@
     <ClInclude Include="SpiralTrajAlgorithm.h">
       <Filter>Header Files\RocksEx</Filter>
     </ClInclude>
+    <ClInclude Include="RocksSpiralBufferManager.h">
+      <Filter>Header Files\RocksEx</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">

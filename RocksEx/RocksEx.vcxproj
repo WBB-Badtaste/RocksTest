@@ -88,6 +88,7 @@
     <ClInclude Include="NyceExErrorHandle.h" />
     <ClInclude Include="RocksExtern_Delta.h" />
     <ClInclude Include="RocksExtren_Spiral.h" />
+    <ClInclude Include="RocksSpiralBufferManager.h" />
     <ClInclude Include="SpaceAlgorithm.h" />
     <ClInclude Include="SpiralTrajAlgorithm.h" />
     <ClInclude Include="stdafx.h" />
