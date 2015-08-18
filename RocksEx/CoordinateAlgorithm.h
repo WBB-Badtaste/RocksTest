@@ -395,13 +395,13 @@ void ConvertPathToWorldCoordinate(const ROCKS_MECH* const pMech, uint32_t &index
 			//ConverSpiralPath();
 			break;
 		case ROCKS_MOVE_TYPE_SPIRAL_EX:
-			pPosition[0] = pPosSplineBuffer[index][0];
-			pPosition[1] = pPosSplineBuffer[index][1];
-			pPosition[2] = pPosSplineBuffer[index][2];
+			pPosition[0] = pPosSpiralSplineBuffer[index][0];
+			pPosition[1] = pPosSpiralSplineBuffer[index][1];
+			pPosition[2] = pPosSpiralSplineBuffer[index][2];
 
-			pVelocity[0] = pVelSplineBuffer[index][0];
-			pVelocity[1] = pVelSplineBuffer[index][1];
-			pVelocity[2] = pVelSplineBuffer[index][2];
+			pVelocity[0] = pVelSpiralSplineBuffer[index][0];
+			pVelocity[1] = pVelSpiralSplineBuffer[index][1];
+			pVelocity[2] = pVelSpiralSplineBuffer[index][2];
 
 			return;
 

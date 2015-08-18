@@ -89,7 +89,9 @@ int _tmain(int argc, _TCHAR* argv[])
 
 //	nyceStatus = NyceError(nyceStatus) ? nyceStatus : RocksCricleDelta(cricleCenterOffest, angle, cricleTrajPars, SAC_INDEFINITE, 0);
 
-	nyceStatus = NyceError(nyceStatus) ? nyceStatus : RocksDoorDelta();
+//	nyceStatus = NyceError(nyceStatus) ? nyceStatus : RocksDoorDelta();
+
+	nyceStatus = NyceError(nyceStatus) ? nyceStatus : RocksSpiralExDoorDelta();
 #endif
 
 	nyceStatus = NyceError(nyceStatus) ? nyceStatus : RocksTerm();

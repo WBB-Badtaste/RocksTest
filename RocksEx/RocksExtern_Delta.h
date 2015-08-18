@@ -160,6 +160,18 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 		ConvertPathToWorldCoordinate(pMech, index, pPosition[realSegNum], pVelocity[realSegNum]);
 		
 	pMech->var.usedNrOfSplines = realSegNum;
+
+	if (WaitForSingleObject(evExportDatas, 0) == WAIT_OBJECT_0 )
+	{
+		ofstream file("..//xyzDatas.txt");	
+		file<<pMech->var.startPos[0]<<"|"<<pMech->var.startPos[1]<<"|"<<pMech->var.startPos[2]<<endl;
+		file<<"|Index|x_pos|y_pos|z_pos|x_vel|y_vel|z_vel|"<<endl<<"|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|"<<endl;
+		for (uint32_t i = 0; i < realSegNum; ++i)
+		{
+			file<<"|"<<i<<"|"<<pPosition[i][0]<<"|"<<pPosition[i][1]<<"|"<<pPosition[i][2]<<"|"<<pVelocity[i][0]<<"|"<<pVelocity[i][1]<<"|"<<pVelocity[i][2]<<"|"<<endl;
+		}
+		file.close();
+	}
 	
 	double jointAnglePos[ROCKS_MECH_MAX_NR_OF_JOINTS];
 	double jointAngleVel[ROCKS_MECH_MAX_NR_OF_JOINTS];
@@ -180,12 +192,12 @@ NYCE_STATUS RocksKinInverseDelta(ROCKS_MECH* pMech, const ROCKS_KIN_INV_PARS* pK
 
 	if (WaitForSingleObject(evExportDatas, 0) == WAIT_OBJECT_0 )
 	{
-		ofstream file("..//xyz&jointDatas.txt");	
+		ofstream file("..//jointDatas.txt");	
 		file<<pMech->var.startPos[0]<<"|"<<pMech->var.startPos[1]<<"|"<<pMech->var.startPos[2]<<endl;
-		file<<"|Index|x_pos|y_pos|z_pos|x_vel|y_vel|z_vel|joint1_pos|joint2_pos|joint3_pos|joint1_vel|joint2_vel|joint3_vel|"<<endl<<"|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|"<<endl;
+		file<<"|Index|joint1_pos|joint2_pos|joint3_pos|joint1_vel|joint2_vel|joint3_vel|"<<endl<<"|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|"<<endl;
 		for (uint32_t i = 0; i < realSegNum; ++i)
 		{
-			file<<"|"<<i<<"|"<<pPosition[i][0]<<"|"<<pPosition[i][1]<<"|"<<pPosition[i][2]<<"|"<<pVelocity[i][0]<<"|"<<pVelocity[i][1]<<"|"<<pVelocity[i][2]<<"|"<<pMech->var.pJointPositionBufferC[0][i]<<"|"<<pMech->var.pJointPositionBufferC[1][i]<<"|"<<pMech->var.pJointPositionBufferC[2][i]<<"|"<<pMech->var.pJointVelocityBufferC[0][i]<<"|"<<pMech->var.pJointVelocityBufferC[1][i]<<"|"<<pMech->var.pJointVelocityBufferC[2][i]<<"|"<<endl;
+			file<<"|"<<i<<"|"<<pMech->var.pJointPositionBufferC[0][i]<<"|"<<pMech->var.pJointPositionBufferC[1][i]<<"|"<<pMech->var.pJointPositionBufferC[2][i]<<"|"<<pMech->var.pJointVelocityBufferC[0][i]<<"|"<<pMech->var.pJointVelocityBufferC[1][i]<<"|"<<pMech->var.pJointVelocityBufferC[2][i]<<"|"<<endl;
 		}
 		file.close();
 	}

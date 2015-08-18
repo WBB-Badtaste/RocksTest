@@ -413,7 +413,6 @@ NYCE_STATUS RocksDoorDelta()
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentLine(&m_mech,&segLinePars4);
 
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajGetPath( &m_mech, &rocksTrajPath );
-
 	
 	while(nyceStatus == NYCE_OK)
 	{
@@ -436,7 +435,7 @@ NYCE_STATUS RocksDoorDelta()
 	return nyceStatus;
 }
 
-const double DOOR_EX_SPLINETIME = 0.0002;
+const double DOOR_EX_SPLINETIME = 0.01;
 const double DOOR_EX_SPEED = 100;
 const double DOOR_EX_ACC = DOOR_SPEED * 100;
 const double SPIRAL_MAX_RADIAL_SPEED = 100;
@@ -458,7 +457,7 @@ NYCE_STATUS RocksSpiralExDoorDelta()
 
 	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinDeltaPosition(&m_mech, segStartPars.startPos);
 
-	segStartPars.splineTime = DOOR_SPLINETIME;
+	segStartPars.splineTime = DOOR_EX_SPLINETIME;
 	segStartPars.maxNrOfSplines = 0;
 	segStartPars.pPositionSplineBuffer = NULL;
 	segStartPars.pVelocitySplineBuffer = NULL;
@@ -481,7 +480,7 @@ NYCE_STATUS RocksSpiralExDoorDelta()
 	
 	segArcPars1.plane = ROCKS_PLANE_ZX;
 	segArcPars1.center[0] = center[0];
-	segArcPars1.center[1] = center[0];
+	segArcPars1.center[1] = center[1];
 	segArcPars1.endPos[0] = OPT_DOOR_POINT_3[0];
 	segArcPars1.endPos[1] = OPT_DOOR_POINT_3[2];
 	segArcPars1.endVelocity = DOOR_EX_SPEED;
@@ -528,12 +527,12 @@ NYCE_STATUS RocksSpiralExDoorDelta()
 
 	segArcPars2.plane = ROCKS_PLANE_ZX;
 	segArcPars2.center[0] = center[0];
-	segArcPars2.center[1] = center[0];
+	segArcPars2.center[1] = center[1];
 	segArcPars2.endPos[0] = OPT_DOOR_POINT_2[0];
 	segArcPars2.endPos[1] = OPT_DOOR_POINT_2[2];
 	segArcPars2.endVelocity = DOOR_EX_SPEED;
 	segArcPars2.maxAcceleration = DOOR_EX_ACC;
-	segArcPars2.positiveAngle = TRUE;
+	segArcPars2.positiveAngle = FALSE;
 	segArcPars2.originOffset.r.x = 0;
 	segArcPars2.originOffset.r.y = 0;
 	segArcPars2.originOffset.r.z = 0;
@@ -557,25 +556,27 @@ NYCE_STATUS RocksSpiralExDoorDelta()
 	segSpiralPars4.originOffset.t.y = 0;
 	segSpiralPars4.originOffset.t.z = 0;
 
-	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentStart(&m_mech,&segStartPars);
-	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentSpiral(&m_mech,&segSpiralPars1);
-	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentArc(&m_mech,&segArcPars1);
-	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentSpiral(&m_mech,&segSpiralPars2);
-	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentSpiral(&m_mech,&segSpiralPars3);
-	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentArc(&m_mech,&segArcPars2);
-	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentSpiral(&m_mech,&segSpiralPars4);
+	
 
-	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajGetPath( &m_mech, &rocksTrajPath );
+//	nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajGetPath( &m_mech, &rocksTrajPath );
 
 	while(nyceStatus == NYCE_OK)
 	{
-		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajLoadPath(&m_mech, &rocksTrajPath);
+// 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajLoadPath(&m_mech, &rocksTrajPath);
+// 
+// 		for (int ax = 0; ax < ROCKS_MECH_MAX_NR_OF_JOINTS; ++ax)
+// 		{
+// 			kinPars.pJointPositionBuffer[ ax ] = NULL;
+// 			kinPars.pJointVelocityBuffer[ ax ] = NULL;
+// 		}
 
-		for (int ax = 0; ax < ROCKS_MECH_MAX_NR_OF_JOINTS; ++ax)
-		{
-			kinPars.pJointPositionBuffer[ ax ] = NULL;
-			kinPars.pJointVelocityBuffer[ ax ] = NULL;
-		}
+		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentStart(&m_mech,&segStartPars);
+		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentSpiral(&m_mech,&segSpiralPars1);
+		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentArc(&m_mech,&segArcPars1);
+		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentSpiral(&m_mech,&segSpiralPars2);
+		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentSpiral(&m_mech,&segSpiralPars3);
+		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentArc(&m_mech,&segArcPars2);
+		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentSpiral(&m_mech,&segSpiralPars4);
 
 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinInverseDelta( &m_mech, &kinPars );
 
