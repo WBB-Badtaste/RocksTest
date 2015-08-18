@@ -225,12 +225,21 @@ NYCE_STATUS RocksTrajSegmentSpiral(ROCKS_MECH *pMech, const ROCKS_TRAJ_SEGMENT_S
 		return ROCKS_ERR_MAX_RADIAL_ACCELERATION_EXCEEDED;
 	}
 
-	if (pMech->var.lastSplineTime == -1.0)//注意，lastSplineTime == -1.0的意义是什么
-		pMech->var.lastSplineTime = 0.0;
-
+	if (pMech->var.lastSplineTime == -1.0)
+		pMech->var.lastSplineTime = 0;
 	double timeOffset(pMech->var.splineTime - pMech->var.lastSplineTime);
+
+//	double timeOffset(0.0);
+// 	if (pMech->var.lastSplineTime == -1.0)
+// 	{
+// 		timeOffset = 0.0;
+// 	}
+// 	else
+// 	{
+// 		timeOffset = pMech->var.splineTime - pMech->var.lastSplineTime;
+// 	}
+
 	double buf((time - timeOffset) / pMech->var.splineTime);
-	pMech->var.lastSplineTime = time - timeOffset - (uint32_t)buf * pMech->var.splineTime;
 	uint32_t splineNum(buf == (double)(uint32_t)buf ? (uint32_t)buf + 1 : (uint32_t)buf + 2);
 	uint32_t nextSegBuffer(pMech->var.usedNrOfSplines + splineNum + 7);
 	//buffer manage
@@ -370,5 +379,10 @@ NYCE_STATUS RocksTrajSegmentSpiral(ROCKS_MECH *pMech, const ROCKS_TRAJ_SEGMENT_S
 
 	//调整mech结构体
 	pMech->var.lastSegmentEndVel = pTraj->endAngleVelocity * endRadius;
+	pMech->var.lastSplineTime = time - timeOffset - (uint32_t)buf * pMech->var.splineTime;
+// 	if (pMech->var.lastSegmentEndVel == 0)
+// 		pMech->var.lastSplineTime = time - timeOffset - (uint32_t)buf * pMech->var.splineTime;
+// 	else
+// 		pMech->var.lastSegmentEndVel = -1.0;
 	return NYCE_OK;
 }
