@@ -198,24 +198,34 @@ NYCE_STATUS RocksTrajSegmentSpiral(ROCKS_MECH *pMech, const ROCKS_TRAJ_SEGMENT_S
 	if (totalAngle < -M_PI)
 		totalAngle = -M_PI * 2.0 - totalAngle;
 	const double startAngleVel(totalAngle >= 0 ? pMech->var.lastSegmentEndVel/ startRadius : -pMech->var.lastSegmentEndVel/ startRadius);
-	const double endAngleVel(totalAngle >= 0 ? pTraj->endAngleVelocity : -pTraj->endAngleVelocity);
+	double endAngleVel(totalAngle >= 0 ? pTraj->endAngleVelocity : -pTraj->endAngleVelocity);
 
 	//估算时间
 	double totalTime(totalAngle * 2.0 / (endAngleVel +  startAngleVel));
-	//以加速度为基准运动参数
+
+	//估算段数
+	const double dSplineNum(totalTime / pMech->var.splineTime);
+	uint32_t splineNum((uint32_t)dSplineNum);
+
+	//修正时间，末速度,加速度，段数
+	if (endAngleVel != 0.0)//末速度不为0时修正
+	{
+		if (dSplineNum - (double)splineNum > 0.5)
+			splineNum++;
+		totalTime = splineNum * pMech->var.splineTime;
+	}
+	endAngleVel = 2.0 * totalAngle / totalTime - startAngleVel;
+
+	//计算加速度
 	const double angleAcc((endAngleVel- startAngleVel) / totalTime);
-	//修正时间
-// 	if ()
-// 	{
-// 	}
 	if ( angleAcc > pTraj->maxAngleAcceleration || angleAcc < -pTraj->maxAngleAcceleration)
 	{
 		pMech->var.mechStep = ROCKS_MECH_STEP_INITIAL;
 		return ROCKS_ERR_MAX_ANGLE_ACCELERATION_EXCEEDED;
 	}
 
-	double totalRadialDistance(endRadius - startRadius);
-	double abMaxRadialVel(totalRadialDistance * 2.0 / totalTime);
+	const double totalRadialDistance(endRadius - startRadius);
+	const double abMaxRadialVel(totalRadialDistance * 2.0 / totalTime);
 	if ( abMaxRadialVel > pTraj->maxRadialVelocity || abMaxRadialVel < -pTraj->maxRadialVelocity)
 	{
 		pMech->var.mechStep = ROCKS_MECH_STEP_INITIAL;
@@ -227,13 +237,6 @@ NYCE_STATUS RocksTrajSegmentSpiral(ROCKS_MECH *pMech, const ROCKS_TRAJ_SEGMENT_S
 		pMech->var.mechStep = ROCKS_MECH_STEP_INITIAL;
 		return ROCKS_ERR_MAX_RADIAL_ACCELERATION_EXCEEDED;
 	}
-
-	if (pMech->var.lastSplineTime == -1.0)
-		pMech->var.lastSplineTime = 0;
-	double timeOffset(pMech->var.splineTime - pMech->var.lastSplineTime);
-
-	double buf((totalTime - timeOffset) / pMech->var.splineTime);
-	uint32_t splineNum(buf == (double)(uint32_t)buf ? (uint32_t)buf + 1 : (uint32_t)buf + 2);
 	
 	//buffer manage
 	uint32_t nextSegBuffer(pMech->var.usedNrOfSplines + splineNum + 7);
@@ -251,8 +254,6 @@ NYCE_STATUS RocksTrajSegmentSpiral(ROCKS_MECH *pMech, const ROCKS_TRAJ_SEGMENT_S
 	//calc segment
 	pMech->var.usedNrOfSplines += 7;
 
-//	double endVel(totalAngle <= 0 ? endAngleVel * endRadius : -endAngleVel * endRadius);
-
 	const double transitionalRadius(startRadius + 0.125 * abRadialAcc * totalTime * totalTime);
 	const double transitionalRadialVel(0.5 * abRadialAcc * totalTime);
 
@@ -260,13 +261,9 @@ NYCE_STATUS RocksTrajSegmentSpiral(ROCKS_MECH *pMech, const ROCKS_TRAJ_SEGMENT_S
 	{
 		double segTime(0.0);
 		if (pMech->var.usedNrOfSplines == nextSegBuffer - 1)
-		{
 			segTime = totalTime;
-		}
 		else
-		{
-			segTime = timeOffset + pMech->var.splineTime * index;
-		}
+			segTime =  pMech->var.splineTime * (index + 1);
 
 		double currentAngle(startAngle + startAngleVel * segTime + 0.5 * angleAcc * segTime * segTime);
 		double currentAngleVel(startAngleVel + angleAcc * segTime);
@@ -344,7 +341,9 @@ NYCE_STATUS RocksTrajSegmentSpiral(ROCKS_MECH *pMech, const ROCKS_TRAJ_SEGMENT_S
 	pMech->var.lastSegmentEndVel = endAngleVel * endRadius;
 	if (pMech->var.lastSegmentEndVel < 0)
 		pMech->var.lastSegmentEndVel = -pMech->var.lastSegmentEndVel;
-	pMech->var.lastSplineTime = totalTime - timeOffset - (uint32_t)buf * pMech->var.splineTime;
-
+	if (pMech->var.lastSegmentEndVel == 0)
+		pMech->var.lastSplineTime = totalTime - (splineNum - 1) * pMech->var.splineTime;
+	else
+		pMech->var.lastSplineTime = -1.0;
 	return NYCE_OK;
 }
