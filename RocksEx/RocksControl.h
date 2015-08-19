@@ -329,8 +329,8 @@ NYCE_STATUS RocksCricleCartesian(const CARTESIAN_COORD &centerOffset, const doub
 	return nyceStatus;	
 }
 
-const double DOOR_SPLINETIME = 0.0002;
-const double DOOR_SPEED = 100;
+const double DOOR_SPLINETIME = 0.001;
+const double DOOR_SPEED = 500;
 const double DOOR_ACC = DOOR_SPEED * 100;
 const double DOOR_HEIGHT = 20;
 const double DOOR_WIDTH = 20;
@@ -572,10 +572,10 @@ NYCE_STATUS RocksSpiralExDoorDelta()
 
 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentStart(&m_mech,&segStartPars);
 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentSpiral(&m_mech,&segSpiralPars1);
-//		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentArc(&m_mech,&segArcPars1);
+		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentArc(&m_mech,&segArcPars1);
 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentSpiral(&m_mech,&segSpiralPars2);
 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentSpiral(&m_mech,&segSpiralPars3);
-//		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentArc(&m_mech,&segArcPars2);
+		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentArc(&m_mech,&segArcPars2);
 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksTrajSegmentSpiral(&m_mech,&segSpiralPars4);
 
 		nyceStatus = NyceError( nyceStatus ) ? nyceStatus : RocksKinInverseDelta( &m_mech, &kinPars );
