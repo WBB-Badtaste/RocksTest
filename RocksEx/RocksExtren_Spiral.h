@@ -197,33 +197,52 @@ NYCE_STATUS RocksTrajSegmentSpiral(ROCKS_MECH *pMech, const ROCKS_TRAJ_SEGMENT_S
 		totalAngle = M_PI * 2.0 - totalAngle;
 	if (totalAngle < -M_PI)
 		totalAngle = -M_PI * 2.0 - totalAngle;
+
+	//不通用的定义，修改
 	const double startAngleVel(totalAngle >= 0 ? pMech->var.lastSegmentEndVel/ startRadius : -pMech->var.lastSegmentEndVel/ startRadius);
 	double endAngleVel(totalAngle >= 0 ? pTraj->endAngleVelocity : -pTraj->endAngleVelocity);
+	//不通用的定义，修改
+
 
 	//估算时间
 	double totalTime(totalAngle * 2.0 / (endAngleVel +  startAngleVel));
 
 	//估算段数
-	const double dSplineNum(totalTime / pMech->var.splineTime);
+	const double dSplineNum(totalTime / pMech->var.splineTime); 
 	uint32_t splineNum((uint32_t)dSplineNum);
 
-	//修正时间，末速度,加速度，段数
+	//修正时间，段数
 	if (endAngleVel != 0.0)//末速度不为0时修正
 	{
 		if (dSplineNum - (double)splineNum > 0.5)
 			splineNum++;
 		totalTime = splineNum * pMech->var.splineTime;
 	}
-	endAngleVel = 2.0 * totalAngle / totalTime - startAngleVel;
 
-	//计算加速度
-	const double angleAcc((endAngleVel- startAngleVel) / totalTime);
-	if ( angleAcc > pTraj->maxAngleAcceleration || angleAcc < -pTraj->maxAngleAcceleration)
+	//加速到达到最大的奇点时间
+	const double singularTime_angleAccMax(totalTime * 0.5);
+
+	//加加速度
+	const double angleJerk1((totalAngle - 2.0 * startAngleVel * singularTime_angleAccMax) / (singularTime_angleAccMax * singularTime_angleAccMax * singularTime_angleAccMax));// 肯定与转角同向
+	const double angleJerk2(-angleJerk1);
+
+	//奇点数据
+	const double singularAngleAcc_angleAccMax(angleJerk1 * singularTime_angleAccMax );
+	const double singularAngleVel_angleAccMax(startAngleVel + 0.5 * angleJerk1 * singularTime_angleAccMax * singularTime_angleAccMax);
+	const double singularAngle_angleAccMax(startAngle + startAngleVel * singularTime_angleAccMax + angleJerk1 * singularTime_angleAccMax * singularTime_angleAccMax * singularTime_angleAccMax / 6.0);
+
+	//修正末速度
+	endAngleVel = startAngleVel + angleJerk1 * singularTime_angleAccMax * singularTime_angleAccMax;
+	//endAngleVel = singularAngleVel_angleAccMax + singularAngle_angleAccMax * singularTime_angleAccMax + 0.5 * angleJerk2 * singularTime_angleAccMax * singularTime_angleAccMax;
+
+	//判断最大加速度
+	if ( singularAngleAcc_angleAccMax > pTraj->maxAngleAcceleration || singularAngleAcc_angleAccMax < -pTraj->maxAngleAcceleration)
 	{
 		pMech->var.mechStep = ROCKS_MECH_STEP_INITIAL;
 		return ROCKS_ERR_MAX_ANGLE_ACCELERATION_EXCEEDED;
 	}
 
+	//径向部分计算
 	const double totalRadialDistance(endRadius - startRadius);
 	const double abMaxRadialVel(totalRadialDistance * 2.0 / totalTime);
 	if ( abMaxRadialVel > pTraj->maxRadialVelocity || abMaxRadialVel < -pTraj->maxRadialVelocity)
@@ -265,8 +284,20 @@ NYCE_STATUS RocksTrajSegmentSpiral(ROCKS_MECH *pMech, const ROCKS_TRAJ_SEGMENT_S
 		else
 			segTime =  pMech->var.splineTime * (index + 1);
 
-		double currentAngle(startAngle + startAngleVel * segTime + 0.5 * angleAcc * segTime * segTime);
-		double currentAngleVel(startAngleVel + angleAcc * segTime);
+		double currentAngle(0.0);
+		double currentAngleVel(0.0);
+		if (segTime <= singularTime_angleAccMax)
+		{
+			currentAngle = startAngle + startAngleVel * segTime + angleJerk1 * segTime * segTime * segTime / 6.0;
+			currentAngleVel = startAngleVel + 0.5 * angleJerk1 * segTime * segTime;
+		}
+		else
+		{
+			double relativeTime(segTime - singularTime_angleAccMax);
+			currentAngle = singularAngle_angleAccMax + singularAngleVel_angleAccMax * relativeTime + 0.5 * singularAngleAcc_angleAccMax * relativeTime * relativeTime + angleJerk2 * relativeTime * relativeTime * relativeTime / 6.0;
+			currentAngleVel = singularAngleVel_angleAccMax + singularAngleAcc_angleAccMax * relativeTime + 0.5 * angleJerk2 * relativeTime * relativeTime;
+		}
+
 		double currentRadius(0.0);
 		double currentRadialVel(0.0);
 		if (segTime > totalTime * 0.5)
