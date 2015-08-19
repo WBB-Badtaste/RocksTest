@@ -200,15 +200,20 @@ NYCE_STATUS RocksTrajSegmentSpiral(ROCKS_MECH *pMech, const ROCKS_TRAJ_SEGMENT_S
 	const double startAngleVel(totalAngle >= 0 ? pMech->var.lastSegmentEndVel/ startRadius : -pMech->var.lastSegmentEndVel/ startRadius);
 	const double endAngleVel(totalAngle >= 0 ? pTraj->endAngleVelocity : -pTraj->endAngleVelocity);
 
+	//估算时间
 	double totalTime(totalAngle * 2.0 / (endAngleVel +  startAngleVel));
-	double angleAcc((endAngleVel- startAngleVel) / totalTime);
+	//以加速度为基准运动参数
+	const double angleAcc((endAngleVel- startAngleVel) / totalTime);
+	//修正时间
+// 	if ()
+// 	{
+// 	}
 	if ( angleAcc > pTraj->maxAngleAcceleration || angleAcc < -pTraj->maxAngleAcceleration)
 	{
 		pMech->var.mechStep = ROCKS_MECH_STEP_INITIAL;
 		return ROCKS_ERR_MAX_ANGLE_ACCELERATION_EXCEEDED;
 	}
 
-	//calc radial pars
 	double totalRadialDistance(endRadius - startRadius);
 	double abMaxRadialVel(totalRadialDistance * 2.0 / totalTime);
 	if ( abMaxRadialVel > pTraj->maxRadialVelocity || abMaxRadialVel < -pTraj->maxRadialVelocity)
@@ -227,20 +232,11 @@ NYCE_STATUS RocksTrajSegmentSpiral(ROCKS_MECH *pMech, const ROCKS_TRAJ_SEGMENT_S
 		pMech->var.lastSplineTime = 0;
 	double timeOffset(pMech->var.splineTime - pMech->var.lastSplineTime);
 
-//	double timeOffset(0.0);
-// 	if (pMech->var.lastSplineTime == -1.0)
-// 	{
-// 		timeOffset = 0.0;
-// 	}
-// 	else
-// 	{
-// 		timeOffset = pMech->var.splineTime - pMech->var.lastSplineTime;
-// 	}
-
 	double buf((totalTime - timeOffset) / pMech->var.splineTime);
 	uint32_t splineNum(buf == (double)(uint32_t)buf ? (uint32_t)buf + 1 : (uint32_t)buf + 2);
-	uint32_t nextSegBuffer(pMech->var.usedNrOfSplines + splineNum + 7);
+	
 	//buffer manage
+	uint32_t nextSegBuffer(pMech->var.usedNrOfSplines + splineNum + 7);
 	SpiralBufferManage(pMech, nextSegBuffer);
 
 	//segment heard
@@ -255,100 +251,70 @@ NYCE_STATUS RocksTrajSegmentSpiral(ROCKS_MECH *pMech, const ROCKS_TRAJ_SEGMENT_S
 	//calc segment
 	pMech->var.usedNrOfSplines += 7;
 
-	double endVel(totalAngle <= 0 ? endAngleVel * endRadius : -endAngleVel * endRadius);
+//	double endVel(totalAngle <= 0 ? endAngleVel * endRadius : -endAngleVel * endRadius);
+
+	const double transitionalRadius(startRadius + 0.125 * abRadialAcc * totalTime * totalTime);
+	const double transitionalRadialVel(0.5 * abRadialAcc * totalTime);
 
 	for (uint32_t index(0); index < splineNum; ++index, ++pMech->var.usedNrOfSplines)
 	{
+		double segTime(0.0);
 		if (pMech->var.usedNrOfSplines == nextSegBuffer - 1)
 		{
-			switch (pTraj->plane)
-			{
-			case ROCKS_PLANE_XY:
-				pPosSpiralSplineBuffer[pMech->var.usedNrOfSplines][0] = pTraj->center[0] + endRadius * cos(endAngle);
-				pPosSpiralSplineBuffer[pMech->var.usedNrOfSplines][1] = pTraj->center[1] + endRadius * sin(endAngle);
-				pPosSpiralSplineBuffer[pMech->var.usedNrOfSplines][2] = pMech->var.lastSegmentEndPos[2];
-															
-				pVelSpiralSplineBuffer[pMech->var.usedNrOfSplines][0] = endVel * sin(endAngle);
-				pVelSpiralSplineBuffer[pMech->var.usedNrOfSplines][1] = -endVel * cos(endAngle);
-				pVelSpiralSplineBuffer[pMech->var.usedNrOfSplines][2] = 0;
-				break;
-			case ROCKS_PLANE_YZ:
-				pPosSpiralSplineBuffer[pMech->var.usedNrOfSplines][0] = pMech->var.lastSegmentEndPos[0];
-				pPosSpiralSplineBuffer[pMech->var.usedNrOfSplines][1] = pTraj->center[0] + endRadius * cos(endAngle);
-				pPosSpiralSplineBuffer[pMech->var.usedNrOfSplines][2] = pTraj->center[1] + endRadius * sin(endAngle);
-															
-				pVelSpiralSplineBuffer[pMech->var.usedNrOfSplines][0] = 0;
-				pVelSpiralSplineBuffer[pMech->var.usedNrOfSplines][1] = endVel * sin(endAngle);
-				pVelSpiralSplineBuffer[pMech->var.usedNrOfSplines][2] = -endVel * cos(endAngle);
-				break;
-			case ROCKS_PLANE_ZX:
-				pPosSpiralSplineBuffer[pMech->var.usedNrOfSplines][0] = pTraj->center[0] + endRadius * cos(endAngle);
-				pPosSpiralSplineBuffer[pMech->var.usedNrOfSplines][1] = pMech->var.lastSegmentEndPos[1];
-				pPosSpiralSplineBuffer[pMech->var.usedNrOfSplines][2] = pTraj->center[1] + endRadius * sin(endAngle);
-			
-				pVelSpiralSplineBuffer[pMech->var.usedNrOfSplines][0] = endVel * sin(endAngle);
-				pVelSpiralSplineBuffer[pMech->var.usedNrOfSplines][1] = 0;
-				pVelSpiralSplineBuffer[pMech->var.usedNrOfSplines][2] = -endVel * cos(endAngle);
-				break;
-			default:
-				break;
-			}
+			segTime = totalTime;
 		}
 		else
 		{
-			//calc segments
-			double segTime(timeOffset + pMech->var.splineTime * index );
-			double currentAngle(startAngle + startAngleVel * segTime + 0.5 * angleAcc * segTime * segTime);
-			double currentAngleVel(startAngleVel + angleAcc * segTime);
-			double transitionalRadius(startRadius + 0.125 * abRadialAcc * totalTime * totalTime);
-			double transitionalRadialVel(0.5 * abRadialAcc * totalTime);
-			double currentRadius(0.0);
-			double currentRadialVel(0.0);
-			if (segTime > totalTime * 0.5)
-			{
-				double accTime(segTime - totalTime * 0.5);
-				currentRadius = transitionalRadius + transitionalRadialVel * accTime  - 0.5 * abRadialAcc * accTime * accTime;
-				currentRadialVel = transitionalRadialVel - abRadialAcc * accTime;
-			}
-			else
-			{
-				currentRadius = startRadius + 0.5 * abRadialAcc * segTime * segTime;
-				currentRadialVel = abRadialAcc * segTime;
-			}
+			segTime = timeOffset + pMech->var.splineTime * index;
+		}
 
+		double currentAngle(startAngle + startAngleVel * segTime + 0.5 * angleAcc * segTime * segTime);
+		double currentAngleVel(startAngleVel + angleAcc * segTime);
+		double currentRadius(0.0);
+		double currentRadialVel(0.0);
+		if (segTime > totalTime * 0.5)
+		{
+			double accTime(segTime - totalTime * 0.5);
+			currentRadius = transitionalRadius + transitionalRadialVel * accTime  - 0.5 * abRadialAcc * accTime * accTime;
+			currentRadialVel = transitionalRadialVel - abRadialAcc * accTime;
+		}
+		else
+		{
+			currentRadius = startRadius + 0.5 * abRadialAcc * segTime * segTime;
+			currentRadialVel = abRadialAcc * segTime;
+		}
 
-			switch (pTraj->plane)
-			{
-			case ROCKS_PLANE_XY:
-				pPosSpiralSplineBuffer[pMech->var.usedNrOfSplines][0] = pTraj->center[0] + currentRadius * cos(currentAngle);
-				pPosSpiralSplineBuffer[pMech->var.usedNrOfSplines][1] = pTraj->center[1] + currentRadius * sin(currentAngle);
-				pPosSpiralSplineBuffer[pMech->var.usedNrOfSplines][2] = pMech->var.lastSegmentEndPos[2];
-															
-				pVelSpiralSplineBuffer[pMech->var.usedNrOfSplines][0] = -currentAngleVel * currentRadius * sin(currentAngle) + currentRadialVel * cos(currentAngle);
-				pVelSpiralSplineBuffer[pMech->var.usedNrOfSplines][1] = currentAngleVel * currentRadius * cos(currentAngle) + currentRadialVel * sin(currentAngle);
-				pVelSpiralSplineBuffer[pMech->var.usedNrOfSplines][2] = 0;
-				break;										
-			case ROCKS_PLANE_YZ:							
-				pPosSpiralSplineBuffer[pMech->var.usedNrOfSplines][0] = pMech->var.lastSegmentEndPos[0];
-				pPosSpiralSplineBuffer[pMech->var.usedNrOfSplines][1] = pTraj->center[0] + currentRadius * cos(currentAngle);
-				pPosSpiralSplineBuffer[pMech->var.usedNrOfSplines][2] = pTraj->center[1] + currentRadius * sin(currentAngle);
-															
-				pVelSpiralSplineBuffer[pMech->var.usedNrOfSplines][0] = 0;
-				pVelSpiralSplineBuffer[pMech->var.usedNrOfSplines][1] = -currentAngleVel * currentRadius * sin(currentAngle) + currentRadialVel * cos(currentAngle);
-				pVelSpiralSplineBuffer[pMech->var.usedNrOfSplines][2] = currentAngleVel * currentRadius * cos(currentAngle) + currentRadialVel * sin(currentAngle);
-				break;										
-			case ROCKS_PLANE_ZX:							
-				pPosSpiralSplineBuffer[pMech->var.usedNrOfSplines][0] = pTraj->center[0] + currentRadius * cos(currentAngle);
-				pPosSpiralSplineBuffer[pMech->var.usedNrOfSplines][1] = pMech->var.lastSegmentEndPos[1];
-				pPosSpiralSplineBuffer[pMech->var.usedNrOfSplines][2] = pTraj->center[1] + currentRadius * sin(currentAngle);
-															
-				pVelSpiralSplineBuffer[pMech->var.usedNrOfSplines][0] = -currentAngleVel * currentRadius * sin(currentAngle) + currentRadialVel * cos(currentAngle);
-				pVelSpiralSplineBuffer[pMech->var.usedNrOfSplines][1] = 0;
-				pVelSpiralSplineBuffer[pMech->var.usedNrOfSplines][2] = currentAngleVel * currentRadius * cos(currentAngle) + currentRadialVel * sin(currentAngle);
-				break;
-			default:
-				break;
-			}
+		switch (pTraj->plane)
+		{
+		case ROCKS_PLANE_XY:
+			pPosSpiralSplineBuffer[pMech->var.usedNrOfSplines][0] = pTraj->center[0] + currentRadius * cos(currentAngle);
+			pPosSpiralSplineBuffer[pMech->var.usedNrOfSplines][1] = pTraj->center[1] + currentRadius * sin(currentAngle);
+			pPosSpiralSplineBuffer[pMech->var.usedNrOfSplines][2] = pMech->var.lastSegmentEndPos[2];
+
+			pVelSpiralSplineBuffer[pMech->var.usedNrOfSplines][0] = -currentAngleVel * currentRadius * sin(currentAngle) + currentRadialVel * cos(currentAngle);
+			pVelSpiralSplineBuffer[pMech->var.usedNrOfSplines][1] = currentAngleVel * currentRadius * cos(currentAngle) + currentRadialVel * sin(currentAngle);
+			pVelSpiralSplineBuffer[pMech->var.usedNrOfSplines][2] = 0;
+			break;										
+		case ROCKS_PLANE_YZ:							
+			pPosSpiralSplineBuffer[pMech->var.usedNrOfSplines][0] = pMech->var.lastSegmentEndPos[0];
+			pPosSpiralSplineBuffer[pMech->var.usedNrOfSplines][1] = pTraj->center[0] + currentRadius * cos(currentAngle);
+			pPosSpiralSplineBuffer[pMech->var.usedNrOfSplines][2] = pTraj->center[1] + currentRadius * sin(currentAngle);
+
+			pVelSpiralSplineBuffer[pMech->var.usedNrOfSplines][0] = 0;
+			pVelSpiralSplineBuffer[pMech->var.usedNrOfSplines][1] = -currentAngleVel * currentRadius * sin(currentAngle) + currentRadialVel * cos(currentAngle);
+			pVelSpiralSplineBuffer[pMech->var.usedNrOfSplines][2] = currentAngleVel * currentRadius * cos(currentAngle) + currentRadialVel * sin(currentAngle);
+			break;										
+		case ROCKS_PLANE_ZX:							
+			pPosSpiralSplineBuffer[pMech->var.usedNrOfSplines][0] = pTraj->center[0] + currentRadius * cos(currentAngle);
+			pPosSpiralSplineBuffer[pMech->var.usedNrOfSplines][1] = pMech->var.lastSegmentEndPos[1];
+			pPosSpiralSplineBuffer[pMech->var.usedNrOfSplines][2] = pTraj->center[1] + currentRadius * sin(currentAngle);
+
+			pVelSpiralSplineBuffer[pMech->var.usedNrOfSplines][0] = -currentAngleVel * currentRadius * sin(currentAngle) + currentRadialVel * cos(currentAngle);
+			pVelSpiralSplineBuffer[pMech->var.usedNrOfSplines][1] = 0;
+			pVelSpiralSplineBuffer[pMech->var.usedNrOfSplines][2] = currentAngleVel * currentRadius * cos(currentAngle) + currentRadialVel * sin(currentAngle);
+			break;
+		default:
+			break;
 		}
 		
 		if (pMech->var.refFramePose2.r.x)
@@ -379,9 +345,6 @@ NYCE_STATUS RocksTrajSegmentSpiral(ROCKS_MECH *pMech, const ROCKS_TRAJ_SEGMENT_S
 	if (pMech->var.lastSegmentEndVel < 0)
 		pMech->var.lastSegmentEndVel = -pMech->var.lastSegmentEndVel;
 	pMech->var.lastSplineTime = totalTime - timeOffset - (uint32_t)buf * pMech->var.splineTime;
-// 	if (pMech->var.lastSegmentEndVel == 0)
-// 		pMech->var.lastSplineTime = time - timeOffset - (uint32_t)buf * pMech->var.splineTime;
-// 	else
-// 		pMech->var.lastSegmentEndVel = -1.0;
+
 	return NYCE_OK;
 }
