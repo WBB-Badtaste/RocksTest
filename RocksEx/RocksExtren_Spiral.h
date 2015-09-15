@@ -218,22 +218,27 @@ NYCE_STATUS RocksTrajSegmentSpiral(ROCKS_MECH *pMech, const ROCKS_TRAJ_SEGMENT_S
 			splineNum++;
 		totalTime = splineNum * pMech->var.splineTime;
 	}
+	else
+	{
+		if (dSplineNum - (double)splineNum > 0)
+			splineNum++;
+	}
 
 	//加速到达到最大的奇点时间
 	const double singularTime_angleAccMax(totalTime * 0.5);
 
 	//加加速度
-	const double angleJerk1((totalAngle - 2.0 * startAngleVel * singularTime_angleAccMax) / (singularTime_angleAccMax * singularTime_angleAccMax * singularTime_angleAccMax));// 肯定与转角同向
-	const double angleJerk2(-angleJerk1);
+	const double anglePositiveJerk((totalAngle - 2.0 * startAngleVel * singularTime_angleAccMax) / (singularTime_angleAccMax * singularTime_angleAccMax * singularTime_angleAccMax));
+	const double angleNegativeJerk(-anglePositiveJerk);
 
 	//奇点数据
-	const double singularAngleAcc_angleAccMax(angleJerk1 * singularTime_angleAccMax );
-	const double singularAngleVel_angleAccMax(startAngleVel + 0.5 * angleJerk1 * singularTime_angleAccMax * singularTime_angleAccMax);
-	const double singularAngle_angleAccMax(startAngle + startAngleVel * singularTime_angleAccMax + angleJerk1 * singularTime_angleAccMax * singularTime_angleAccMax * singularTime_angleAccMax / 6.0);
+	const double singularAngleAcc_angleAccMax(anglePositiveJerk * singularTime_angleAccMax );
+	const double singularAngleVel_angleAccMax(startAngleVel + 0.5 * anglePositiveJerk * singularTime_angleAccMax * singularTime_angleAccMax);
+	const double singularAngle_angleAccMax(startAngle + startAngleVel * singularTime_angleAccMax + anglePositiveJerk * singularTime_angleAccMax * singularTime_angleAccMax * singularTime_angleAccMax / 6.0);
 
 	//修正末速度
-	endAngleVel = startAngleVel + angleJerk1 * singularTime_angleAccMax * singularTime_angleAccMax;
-	//endAngleVel = singularAngleVel_angleAccMax + singularAngle_angleAccMax * singularTime_angleAccMax + 0.5 * angleJerk2 * singularTime_angleAccMax * singularTime_angleAccMax;
+	if (endAngleVel != 0.0)//修改，计算不出0速度
+		endAngleVel = startAngleVel + anglePositiveJerk * singularTime_angleAccMax * singularTime_angleAccMax;
 
 	//判断最大加速度
 	if ( singularAngleAcc_angleAccMax > pTraj->maxAngleAcceleration || singularAngleAcc_angleAccMax < -pTraj->maxAngleAcceleration)
@@ -244,18 +249,37 @@ NYCE_STATUS RocksTrajSegmentSpiral(ROCKS_MECH *pMech, const ROCKS_TRAJ_SEGMENT_S
 
 	//径向部分计算
 	const double totalRadialDistance(endRadius - startRadius);
-	const double abMaxRadialVel(totalRadialDistance * 2.0 / totalTime);
-	if ( abMaxRadialVel > pTraj->maxRadialVelocity || abMaxRadialVel < -pTraj->maxRadialVelocity)
+
+	//径向奇点时间
+	const double singularTime_radialPositiveAccMax(totalTime * 0.25);
+	const double singularTime_radialNegativeAccMax(totalTime * 0.75);
+
+	//径向加加速度计算
+	const double radialPositiveJerk(totalRadialDistance * 0.5 / (singularTime_radialPositiveAccMax * singularTime_radialPositiveAccMax * singularTime_radialPositiveAccMax));
+	const double radialNegativeJerk(-radialPositiveJerk);
+
+	//奇点数据
+	const double singularRadialPos_radialPositiveAccMax(startRadius + radialPositiveJerk * singularTime_radialPositiveAccMax * singularTime_radialPositiveAccMax * singularTime_radialPositiveAccMax / 6.0);
+	const double singularRadialVel_radialPositiveAccMax(0.5 * radialPositiveJerk * singularTime_radialPositiveAccMax * singularTime_radialPositiveAccMax);
+	const double singularRadialAcc_radialPositiveAccMax(radialPositiveJerk * singularTime_radialPositiveAccMax);
+
+	const double singularRadialPos_radialNegativeAccMax(startRadius + 11.0 / 6.0 * radialPositiveJerk * singularTime_radialPositiveAccMax * singularTime_radialPositiveAccMax * singularTime_radialPositiveAccMax);
+	const double singularRadialVel_radialNegativeAccMax(0.5 * radialPositiveJerk * singularTime_radialPositiveAccMax * singularTime_radialPositiveAccMax);
+	const double singularRadialAcc_radialNegativeAccMax(radialNegativeJerk * singularTime_radialPositiveAccMax);
+
+	const double maxRadialVel(radialPositiveJerk * singularTime_radialPositiveAccMax * singularTime_radialPositiveAccMax);
+	if ( maxRadialVel > pTraj->maxRadialVelocity || maxRadialVel < -pTraj->maxRadialVelocity)
 	{
 		pMech->var.mechStep = ROCKS_MECH_STEP_INITIAL;
 		return ROCKS_ERR_MAX_RADIAL_VELOCITY_EXCEEDED;
 	}
-	double abRadialAcc(abMaxRadialVel * 2.0 / totalTime);
-	if ( abRadialAcc > pTraj->maxRadialAcceleration || abRadialAcc < -pTraj->maxRadialAcceleration)
+	if ( singularRadialAcc_radialPositiveAccMax > pTraj->maxRadialAcceleration || singularRadialAcc_radialPositiveAccMax < -pTraj->maxRadialAcceleration)
 	{
 		pMech->var.mechStep = ROCKS_MECH_STEP_INITIAL;
 		return ROCKS_ERR_MAX_RADIAL_ACCELERATION_EXCEEDED;
 	}
+
+	
 	
 	//buffer manage
 	uint32_t nextSegBuffer(pMech->var.usedNrOfSplines + splineNum + 7);
@@ -273,9 +297,6 @@ NYCE_STATUS RocksTrajSegmentSpiral(ROCKS_MECH *pMech, const ROCKS_TRAJ_SEGMENT_S
 	//calc segment
 	pMech->var.usedNrOfSplines += 7;
 
-	const double transitionalRadius(startRadius + 0.125 * abRadialAcc * totalTime * totalTime);
-	const double transitionalRadialVel(0.5 * abRadialAcc * totalTime);
-
 	for (uint32_t index(0); index < splineNum; ++index, ++pMech->var.usedNrOfSplines)
 	{
 		double segTime(0.0);
@@ -288,28 +309,37 @@ NYCE_STATUS RocksTrajSegmentSpiral(ROCKS_MECH *pMech, const ROCKS_TRAJ_SEGMENT_S
 		double currentAngleVel(0.0);
 		if (segTime <= singularTime_angleAccMax)
 		{
-			currentAngle = startAngle + startAngleVel * segTime + angleJerk1 * segTime * segTime * segTime / 6.0;
-			currentAngleVel = startAngleVel + 0.5 * angleJerk1 * segTime * segTime;
+			currentAngle = startAngle + startAngleVel * segTime + anglePositiveJerk * segTime * segTime * segTime / 6.0;
+			currentAngleVel = startAngleVel + 0.5 * anglePositiveJerk * segTime * segTime;
 		}
 		else
 		{
 			double relativeTime(segTime - singularTime_angleAccMax);
-			currentAngle = singularAngle_angleAccMax + singularAngleVel_angleAccMax * relativeTime + 0.5 * singularAngleAcc_angleAccMax * relativeTime * relativeTime + angleJerk2 * relativeTime * relativeTime * relativeTime / 6.0;
-			currentAngleVel = singularAngleVel_angleAccMax + singularAngleAcc_angleAccMax * relativeTime + 0.5 * angleJerk2 * relativeTime * relativeTime;
+			currentAngle = singularAngle_angleAccMax + singularAngleVel_angleAccMax * relativeTime + 0.5 * singularAngleAcc_angleAccMax * relativeTime * relativeTime + angleNegativeJerk * relativeTime * relativeTime * relativeTime / 6.0;
+			currentAngleVel = singularAngleVel_angleAccMax + singularAngleAcc_angleAccMax * relativeTime + 0.5 * angleNegativeJerk * relativeTime * relativeTime;
 		}
 
 		double currentRadius(0.0);
 		double currentRadialVel(0.0);
-		if (segTime > totalTime * 0.5)
+		if (segTime <= singularTime_radialPositiveAccMax)
 		{
-			double accTime(segTime - totalTime * 0.5);
-			currentRadius = transitionalRadius + transitionalRadialVel * accTime  - 0.5 * abRadialAcc * accTime * accTime;
-			currentRadialVel = transitionalRadialVel - abRadialAcc * accTime;
+			currentRadius = startRadius + radialPositiveJerk * segTime * segTime * segTime / 6.0;
+			currentRadialVel = 0.5 * radialPositiveJerk * segTime * segTime;
 		}
 		else
 		{
-			currentRadius = startRadius + 0.5 * abRadialAcc * segTime * segTime;
-			currentRadialVel = abRadialAcc * segTime;
+			if (segTime <= singularTime_radialNegativeAccMax)
+			{
+				double relativeTime(segTime - singularTime_radialPositiveAccMax);
+				currentRadius = singularRadialPos_radialPositiveAccMax + singularRadialVel_radialPositiveAccMax * relativeTime + 0.5 * singularRadialAcc_radialPositiveAccMax * relativeTime * relativeTime + radialNegativeJerk * relativeTime * relativeTime * relativeTime / 6.0;
+				currentRadialVel = singularRadialVel_radialPositiveAccMax + singularRadialAcc_radialPositiveAccMax * relativeTime + 0.5 * radialNegativeJerk * relativeTime * relativeTime;
+			}
+			else
+			{
+				double relativeTime(segTime - singularTime_radialNegativeAccMax);
+				currentRadius = singularRadialPos_radialNegativeAccMax + singularRadialVel_radialNegativeAccMax * relativeTime + 0.5 * singularRadialAcc_radialNegativeAccMax * relativeTime * relativeTime + radialPositiveJerk * relativeTime * relativeTime * relativeTime / 6.0;
+				currentRadialVel = singularRadialVel_radialNegativeAccMax + singularRadialAcc_radialNegativeAccMax * relativeTime + 0.5 * radialPositiveJerk * relativeTime * relativeTime;
+			}
 		}
 
 		switch (pTraj->plane)
@@ -331,8 +361,8 @@ NYCE_STATUS RocksTrajSegmentSpiral(ROCKS_MECH *pMech, const ROCKS_TRAJ_SEGMENT_S
 			pVelSpiralSplineBuffer[pMech->var.usedNrOfSplines][0] = 0;
 			pVelSpiralSplineBuffer[pMech->var.usedNrOfSplines][1] = -currentAngleVel * currentRadius * sin(currentAngle) + currentRadialVel * cos(currentAngle);
 			pVelSpiralSplineBuffer[pMech->var.usedNrOfSplines][2] = currentAngleVel * currentRadius * cos(currentAngle) + currentRadialVel * sin(currentAngle);
-			break;										
-		case ROCKS_PLANE_ZX:							
+			break;
+		case ROCKS_PLANE_ZX:
 			pPosSpiralSplineBuffer[pMech->var.usedNrOfSplines][0] = pTraj->center[0] + currentRadius * cos(currentAngle);
 			pPosSpiralSplineBuffer[pMech->var.usedNrOfSplines][1] = pMech->var.lastSegmentEndPos[1];
 			pPosSpiralSplineBuffer[pMech->var.usedNrOfSplines][2] = pTraj->center[1] + currentRadius * sin(currentAngle);

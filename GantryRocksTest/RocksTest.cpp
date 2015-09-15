@@ -502,6 +502,7 @@ void ConverLinePath(ROCKS_PLANE &plane, ROCKS_POSE &pose, double &startPos1, dou
 		pVelocity[1] = CurrentVelocity * rate2;
 		pVelocity[2] = 0;
 		break;
+
 	case ROCKS_PLANE_YZ:
 
 		pPosition[0] = 0;
@@ -512,6 +513,7 @@ void ConverLinePath(ROCKS_PLANE &plane, ROCKS_POSE &pose, double &startPos1, dou
 		pVelocity[1] = CurrentVelocity * rate1;
 		pVelocity[2] = CurrentVelocity * rate2;
 		break;
+
 	case ROCKS_PLANE_ZX:
 
 		pPosition[0] = CurrentDistance * rate1 + startPos1;
@@ -522,6 +524,7 @@ void ConverLinePath(ROCKS_PLANE &plane, ROCKS_POSE &pose, double &startPos1, dou
 		pVelocity[1] = 0;
 		pVelocity[2] = CurrentVelocity * rate2;
 		break;
+
 	default:
 		break;
 	}
